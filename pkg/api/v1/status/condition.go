@@ -54,6 +54,16 @@ const (
 	DatabaseUserReadyType ConditionType = "DatabaseUserReady"
 )
 
+// MongoDBAtlasConnection condition types
+const (
+	MongoDBAtlasConnectionReadyType ConditionType = "ReadyForBinding"
+)
+
+// MongoDBAtlasInventory condition types
+const (
+	MongoDBAtlasInventoryReadyType ConditionType = "SpecSynced"
+)
+
 // Condition describes the state of an Atlas Custom Resource at a certain point.
 type Condition struct {
 	// Type of Atlas Custom Resource condition.
