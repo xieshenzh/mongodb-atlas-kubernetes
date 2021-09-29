@@ -168,11 +168,8 @@ endef
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, update security context for OpenShift, then validate generated files.
 	operator-sdk generate kustomize manifests -q --apis-dir=pkg/api
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	sed -i .bak '/runAsNonRoot: true/d' "./bundle/manifests/mongodb-atlas-kubernetes.clusterserviceversion.yaml"
-	sed -i .bak '/runAsUser: 1000380001/d' "./bundle/manifests/mongodb-atlas-kubernetes.clusterserviceversion.yaml"
-	rm ./bundle/manifests/*.bak
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMGVERSION)
+	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/manifests | operator-sdk generate bundle -q --overwrite --manifests --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 .PHONY: image
@@ -207,6 +204,9 @@ catalog-build: opm ## bundle bundle-push ## Build file-based bundle
 		VERSION=$(VERSION) \
 		./scripts/build_catalog.sh
 	endif
+
+docker-build: ## Build the docker image
+	docker build -t $(IMGVERSION) .
 
 .PHONY: catalog-push
 catalog-push:
