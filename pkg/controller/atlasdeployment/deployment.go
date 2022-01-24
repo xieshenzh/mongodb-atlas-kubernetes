@@ -54,8 +54,11 @@ func ensureDeploymentState(ctx *workflow.Context, project *mdbv1.AtlasProject, d
 	case "UPDATING", "REPAIRING":
 		return atlasDeployment, workflow.InProgress(workflow.DeploymentUpdating, "deployment is updating")
 
-	// TODO: add "DELETING", "DELETED", handle 404 on delete
+	case "DELETING":
+		return atlasCluster, workflow.InProgress(workflow.ClusterDeleting, "cluster is being deleted")
 
+	case "DELETED":
+		return atlasCluster, workflow.InProgress(workflow.ClusterDeleted, "cluster has been deleted")
 	default:
 		return atlasDeployment, workflow.Terminate(workflow.Internal, fmt.Sprintf("unknown deployment state %q", atlasDeployment.StateName))
 	}
