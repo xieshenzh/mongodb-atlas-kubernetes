@@ -550,6 +550,31 @@ spec:
                       allowPrivilegeEscalation: false
                 serviceAccountName: mongodb-atlas-operator
                 terminationGracePeriodSeconds: 10
+                imagePullPolicy: Always
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 768Mi
+                  requests:
+                    cpu: 100m
+                    memory: 50Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+              serviceAccountName: mongodb-atlas-operator
+              terminationGracePeriodSeconds: 10
       permissions:
         - rules:
             - apiGroups:
