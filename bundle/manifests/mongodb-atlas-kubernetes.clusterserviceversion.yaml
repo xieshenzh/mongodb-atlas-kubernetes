@@ -536,7 +536,11 @@ spec:
           - update
         serviceAccountName: mongodb-atlas-operator
       deployments:
-      - name: mongodb-atlas-operator
+      - label:
+          app.kubernetes.io/component: controller
+          app.kubernetes.io/instance: mongodb-atlas-kubernetes-operator
+          app.kubernetes.io/name: mongodb-atlas-kubernetes-operator
+        name: mongodb-atlas-operator
         spec:
           replicas: 1
           selector:
@@ -573,7 +577,7 @@ spec:
                       fieldPath: metadata.namespace
                 - name: SYNC_PERIOD_MIN
                   value: "180"
-                image: quay.io/mongodb/mongodb-atlas-kubernetes:0.8.0
+                image: quay.io/mongodb/mongodb-atlas-kubernetes-dbaas:0.3.0
                 imagePullPolicy: Always
                 livenessProbe:
                   httpGet:

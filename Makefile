@@ -9,7 +9,7 @@ CONTAINER_ENGINE?=docker
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.8.0
+VERSION ?= 0.3.0
 
 ifndef PRODUCT_VERSION
 PRODUCT_VERSION := $(shell git describe --tags --dirty --broken)
@@ -40,17 +40,19 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 
 # Base registry for the operator, bundle, catalog images
 REGISTRY ?= quay.io/mongodb
-# BUNDLE_IMG defines the image:tag used for the bundle.
-# You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
-BUNDLE_IMG ?= $(REGISTRY)/$(IMG)-bundle:$(VERSION)
-
 # Image URL to use all building/pushing image targets
-IMG ?= mongodb-atlas-kubernetes
-#BUNDLE_REGISTRY ?= $(REGISTRY)/$(IMG)-operator-bundle
-OPERATOR_REGISTRY ?= $(REGISTRY)/$(IMG)
-CATALOG_REGISTRY ?= $(REGISTRY)/$(IMG)-catalog
-OPERATOR_IMAGE ?= ${OPERATOR_REGISTRY}:${VERSION}
-CATALOG_IMAGE ?= ${CATALOG_REGISTRY}:${VERSION}
+IMG ?= $(REGISTRY)/mongodb-atlas-kubernetes-dbaas
+OPERATOR_REGISTRY ?= $(IMG)
+
+OPERATOR_IMG ?= $(IMG):$(VERSION)
+# OPERATOR_IMG ?= $(IMG):latest
+
+BUNDLE_IMG ?= $(IMG)-bundle:$(VERSION)
+# BUNDLE_IMG ?= $(IMG)-bundle:latest
+
+CATALOG_IMG ?= $(IMG)-catalog:$(VERSION)
+# CATALOG_IMG ?= ${IMG}-catalog:latest
+
 TARGET_NAMESPACE ?= mongodb-atlas-operator-system-test
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -170,14 +172,14 @@ endef
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	operator-sdk generate kustomize manifests -q --apis-dir=pkg/api
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(OPERATOR_IMAGE)
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(OPERATOR_IMG)
 	$(KUSTOMIZE) build --load-restrictor LoadRestrictionsNone config/manifests | operator-sdk generate bundle -q --overwrite --manifests --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 
 .PHONY: image
 image: manager ## Build the operator image
-	$(CONTAINER_ENGINE) build -t $(OPERATOR_IMAGE) .
-	$(CONTAINER_ENGINE) push $(OPERATOR_IMAGE)
+	$(CONTAINER_ENGINE) build -t $(OPERATOR_IMG) .
+	$(CONTAINER_ENGINE) push $(OPERATOR_IMG)
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
@@ -198,10 +200,10 @@ catalog-build: opm ## bundle bundle-push ## Build file-based bundle
 ifneq ($(origin CATALOG_BASE_IMG), undefined)
 	$(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMAGE) --bundles $(BUNDLE_IMGS) --from-index $(CATALOG_BASE_IMG)
 else
-	$(MAKE) image IMG=$(OPERATOR_IMAGE)
+	$(MAKE) image IMG=$(IMG)
 	CATALOG_DIR=$(CATALOG_DIR) \
 	CHANNEL=$(DEFAULT_CHANNEL) \
-	CATALOG_IMAGE=$(CATALOG_IMAGE) \
+	CATALOG_IMAGE=$(CATALOG_IMG) \
 	BUNDLE_IMAGE=$(BUNDLE_IMG) \
 	VERSION=$(VERSION) \
 	./scripts/build_catalog.sh
@@ -209,7 +211,7 @@ endif
 
 .PHONY: catalog-push
 catalog-push:
-	$(CONTAINER_ENGINE) push $(CATALOG_IMAGE)
+	$(CONTAINER_ENGINE) push $(CATALOG_IMG)
 
 .PHONY: build-subscription
 build-subscription:
@@ -221,7 +223,7 @@ build-subscription:
 .PHONY: build-catalogsource
 build-catalogsource:
 	CATALOG_DIR=$(shell dirname "$(CATALOG_DIR)") \
-	CATALOG_IMAGE=$(CATALOG_IMAGE) \
+	CATALOG_IMG=$(CATALOG_IMG) \
 	./scripts/build_catalogsource.sh
 
 .PHONY: deploy-olm
@@ -242,7 +244,7 @@ deploy-olm: bundle-build bundle-push catalog-build catalog-push build-catalogsou
 
 .PHONY: image-push
 image-push: ## Push the docker image
-	$(CONTAINER_ENGINE) push ${IMGVERSION}
+	$(CONTAINER_ENGINE) push ${OPERATOR_IMG}
 
 # Additional make goals
 .PHONY: run-kind
