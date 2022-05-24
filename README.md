@@ -141,6 +141,7 @@ containers:
           key: connectionStringStandardSrv
 
 ```
+
 ## Additional information or features
 
 In certain cases you can modify the default operator behaviour via [annotations](docs/annotations.md).
