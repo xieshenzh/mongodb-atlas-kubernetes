@@ -196,18 +196,15 @@ BUNDLE_IMGS ?= $(BUNDLE_IMG)
 .PHONY: catalog-build
 CATALOG_DIR ?= ./scripts/openshift/atlas-catalog
 #catalog-build: IMG=
-catalog-build: opm ## bundle bundle-push ## Build file-based bundle
-ifneq ($(origin CATALOG_BASE_IMG), undefined)
-	$(OPM) index add --container-tool $(CONTAINER_ENGINE) --mode semver --tag $(CATALOG_IMAGE) --bundles $(BUNDLE_IMGS) --from-index $(CATALOG_BASE_IMG)
-else
+catalog-build: ## bundle bundle-push ## Build file-based bundle
 	$(MAKE) image IMG=$(IMG)
 	CATALOG_DIR=$(CATALOG_DIR) \
 	CHANNEL=$(DEFAULT_CHANNEL) \
 	CATALOG_IMAGE=$(CATALOG_IMG) \
 	BUNDLE_IMAGE=$(BUNDLE_IMG) \
 	VERSION=$(VERSION) \
+	CONTAINER_ENGINE=$(CONTAINER_ENGINE) \
 	./scripts/build_catalog.sh
-endif
 
 .PHONY: catalog-push
 catalog-push:
@@ -273,20 +270,3 @@ post-install-hook:
 .PHONY: x509-cert
 x509-cert: ## Create X.509 cert at path tmp/x509/ (see docs/x509-user.md)
 	go run scripts/create_x509.go
-
-.PHONY: opm
-OPM = ./bin/opm
-opm: ## Download opm locally if necessary.
-ifeq (,$(wildcard $(OPM)))
-ifeq (,$(shell which opm 2>/dev/null))
-	@{ \
-	set -e ;\
-	mkdir -p $(dir $(OPM)) ;\
-	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.17.3/$${OS}-$${ARCH}-opm ;\
-	chmod +x $(OPM) ;\
-	}
-else
-OPM = $(shell which opm)
-endif
-endif
