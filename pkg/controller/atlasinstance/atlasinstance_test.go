@@ -381,9 +381,8 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 			Namespace: "dbaas-operator",
 		},
 		Spec: dbaasv1alpha1.DBaaSInventorySpec{
-			CredentialsRef: &dbaasv1alpha1.NamespacedName{
-				Name:      fmt.Sprintf("secret-%s", tcName),
-				Namespace: "dbaas-operator",
+			CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+				Name: fmt.Sprintf("secret-%s", tcName),
 			},
 		},
 	}
