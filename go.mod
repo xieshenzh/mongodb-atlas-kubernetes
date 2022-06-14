@@ -7,7 +7,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.24
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.11
 	github.com/Azure/go-autorest/autorest/to v0.4.0
-	github.com/RHEcosystemAppEng/dbaas-operator v0.1.5
+	github.com/RHEcosystemAppEng/dbaas-operator v0.1.4-0.20220601181250-cc7bd85ce9c0
 	github.com/aws/aws-sdk-go v1.44.16
 	github.com/fatih/structtag v1.2.0
 	github.com/fgrosse/zaptest v1.1.0
