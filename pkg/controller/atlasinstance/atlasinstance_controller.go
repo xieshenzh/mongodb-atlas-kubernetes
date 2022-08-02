@@ -83,8 +83,6 @@ const (
 	DBaaSInstanceNameLabel         = "dbaas.redhat.com/instance-name"
 	DBaaSInstanceNamespaceLabel    = "dbaas.redhat.com/instance-namespace"
 	FreeClusterFailed              = "CANNOT_CREATE_FREE_CLUSTER_VIA_PUBLIC_API"
-	PhaseFailed                    = "Failed"
-	PhasePending                   = "Pending"
 	ClusterAlreadyExistsInAtlas    = "ClusterAlreadyExistsInAtlas"
 	ClusterAlreadyExistsInAtlasMsg = "Can not create the cluster as it already exists in Atlas"
 )
@@ -155,7 +153,7 @@ func (r *MongoDBAtlasInstanceReconciler) Reconcile(cx context.Context, req ctrl.
 	if atlasProjectCond == nil || atlasProjectCond.Type == status.IPAccessListReadyType { // AtlasProject reconciliation still on going
 		log.Infof("Atlas Project for instance:%v/%v is not ready. Requeue to retry.", inst.Namespace, inst.Name)
 		// Set phase to Pending
-		inst.Status.Phase = PhasePending
+		inst.Status.Phase = dbaas.PhasePending
 		// Requeue to try again
 		return ctrl.Result{Requeue: true}, nil
 	}
@@ -194,11 +192,11 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasDeployment(cx context.Con
 		if apiErrors.IsNotFound(err) { // The AtlasDeployment CR does not exist
 			// If the instance has been previously associated with an AtlasCluster CR, its phase is not in pending status (ie, is in creating, updating or ready)
 			// This allows the operator to migrate from a previous AtlasCluster CR to an AtlasDeployment CR
-			if len(inst.Status.Phase) == 0 || inst.Status.Phase == PhasePending {
+			if len(inst.Status.Phase) == 0 || inst.Status.Phase == dbaas.PhasePending || inst.Status.Phase == dbaas.PhaseUnknown {
 				_, result := atlasinventory.GetClusterInfo(atlasClient, atlasProject.Spec.Name, inst.Spec.Name)
 				if result.IsOk() {
 					// The cluster already exists in Atlas. Mark provisioning phase as failed and return
-					inst.Status.Phase = PhaseFailed
+					inst.Status.Phase = dbaas.PhaseFailed
 					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, ClusterAlreadyExistsInAtlas, ClusterAlreadyExistsInAtlasMsg)
 					// No requeue
 					return ctrl.Result{}, nil
@@ -473,7 +471,7 @@ func setInstanceStatusWithClusterInfo(atlasClient *mongodbatlas.Client, inst *db
 		inst.Status.InstanceID = instInfo.InstanceID
 		inst.Status.InstanceInfo = instInfo.InstanceInfo
 	} else {
-		inst.Status.Phase = PhasePending
+		inst.Status.Phase = dbaas.PhasePending
 		inst.Status.InstanceID = ""
 		inst.Status.InstanceInfo = nil
 	}
@@ -485,14 +483,14 @@ func setInstanceStatusWithClusterInfo(atlasClient *mongodbatlas.Client, inst *db
 				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
 			} else {
 				if strings.Contains(cond.Message, FreeClusterFailed) {
-					inst.Status.Phase = PhaseFailed
+					inst.Status.Phase = dbaas.PhaseFailed
 				}
 				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), cond.Reason, cond.Message)
 			}
 		}
 	}
 	if !statusFound {
-		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, PhasePending, "Waiting for cluster creation to start")
+		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, dbaas.PhasePending, "Waiting for cluster creation to start")
 	}
 
 	return result
