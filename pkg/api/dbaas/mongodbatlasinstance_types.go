@@ -19,6 +19,18 @@ import (
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 )
 
+const (
+	PhaseFailed   = "Failed"
+	PhasePending  = "Pending"
+	PhaseUnknown  = "Unknown"
+	PhaseCreating = "Creating"
+	PhaseUpdating = "Updating"
+	PhaseDeleting = "Deleting"
+	PhaseDeleted  = "Deleted"
+	PhaseReady    = "Ready"
+	PhaseError    = "Error"
+)
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
