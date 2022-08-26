@@ -24,14 +24,17 @@ spec:
       displayName: Organization ID
       type: string
       required: true
+      helpText: You can find the Organization ID from the Organization Settings page on your MongoDB account home page.
     - key: publicApiKey
       displayName: Public API Key
       type: string
       required: true
+      helpText: You can find the Public API Key from the API Keys tab on the Organization Access Manager page from your MongoDB account home page
     - key: privateApiKey
       displayName: Private API Key
       type: maskedstring
       required: true
+      helpText: You can find the Private API Key from the API Keys tab on the Organization Access Manager page from your MongoDB account home page.
   instanceParameterSpecs:
     - name: clusterName
       displayName: Cluster Name
