@@ -91,26 +91,26 @@ func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dba
 			dbaas.ProjectIDKey:                    project.ID,
 			dbaas.ProjectNameKey:                  project.Name,
 			dbaas.ConnectionStringsStandardSrvKey: cluster.ConnectionStrings.StandardSrv,
-			dbaas.ProvisionPhaseKey:               phase,
+			dbaas.ProvisionPhaseKey:               string(phase),
 		},
 	}
 }
 
-func parsePhase(state string) string {
+func parsePhase(state string) dbaasv1alpha1.DBaasInstancePhase {
 	switch state {
 	case "Pending":
-		return dbaas.PhasePending
+		return dbaasv1alpha1.InstancePhasePending
 	case "Creating":
-		return dbaas.PhaseCreating
+		return dbaasv1alpha1.InstancePhaseCreating
 	case "Updating":
-		return dbaas.PhaseUpdating
+		return dbaasv1alpha1.InstancePhaseUpdating
 	case "Deleting":
-		return dbaas.PhaseDeleting
+		return dbaasv1alpha1.InstancePhaseDeleting
 	case "Deleted":
-		return dbaas.PhaseDeleted
+		return dbaasv1alpha1.InstancePhaseDeleted
 	case "Ready", "Idle":
-		return dbaas.PhaseReady
+		return dbaasv1alpha1.InstancePhaseReady
 	default:
-		return dbaas.PhaseUnknown
+		return dbaasv1alpha1.InstancePhaseUnknown
 	}
 }
