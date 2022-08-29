@@ -76,10 +76,7 @@ func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dba
 	// Deleting - cluster deletion in progress
 	// Deleted - cluster has been deleted
 	// Ready - cluster provisioning complete
-	phase := strings.Title(strings.ToLower(cluster.StateName))
-	if cluster.StateName == "IDLE" {
-		phase = "Ready"
-	}
+	phase := parsePhase(strings.Title(strings.ToLower(cluster.StateName)))
 	provider := cluster.ProviderSettings.BackingProviderName
 	if len(provider) == 0 {
 		provider = cluster.ProviderSettings.ProviderName
@@ -96,5 +93,24 @@ func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dba
 			dbaas.ConnectionStringsStandardSrvKey: cluster.ConnectionStrings.StandardSrv,
 			dbaas.ProvisionPhaseKey:               phase,
 		},
+	}
+}
+
+func parsePhase(state string) string {
+	switch state {
+	case "Pending":
+		return dbaas.PhasePending
+	case "Creating":
+		return dbaas.PhaseCreating
+	case "Updating":
+		return dbaas.PhaseUpdating
+	case "Deleting":
+		return dbaas.PhaseDeleting
+	case "Deleted":
+		return dbaas.PhaseDeleted
+	case "Ready", "Idle":
+		return dbaas.PhaseReady
+	default:
+		return dbaas.PhaseUnknown
 	}
 }
