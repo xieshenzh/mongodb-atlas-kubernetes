@@ -106,7 +106,7 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 
 	// This update will make sure the status is always updated in case of any errors or successful result
 	defer func(c *dbaas.MongoDBAtlasConnection) {
-		err := r.Client.Status().Update(context.Background(), c)
+		err := r.Client.Status().Update(cx, c)
 		if err != nil {
 			log.Infof("Could not update resource status:%v", err)
 		}
@@ -149,39 +149,43 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 
 	projectID := instance.InstanceInfo[dbaas.ProjectIDKey]
 
-	// Now create a configmap for non-sensitive information needed for connecting to the DB instance
-	cm := getOwnedConfigMap(conn, instance.InstanceInfo[dbaas.ConnectionStringsStandardSrvKey])
-	cmCreated, err := r.Clientset.CoreV1().ConfigMaps(req.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
-	if err != nil {
-		result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
-		dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
-		return ctrl.Result{}, fmt.Errorf("failed to create configmap:%w", err)
+	if conn.Status.ConnectionInfoRef == nil {
+		// Now create a configmap for non-sensitive information needed for connecting to the DB instance
+		cm := getOwnedConfigMap(conn, instance.InstanceInfo[dbaas.ConnectionStringsStandardSrvKey])
+		cmCreated, err := r.Clientset.CoreV1().ConfigMaps(req.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
+		if err != nil {
+			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
+			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			return ctrl.Result{}, fmt.Errorf("failed to create configmap:%w", err)
+		}
+		conn.Status.ConnectionInfoRef = &corev1.LocalObjectReference{Name: cmCreated.Name}
 	}
 
-	// Generate a db username and password
-	dbUserName := fmt.Sprintf("atlas-db-user-%v", time.Now().UnixNano())
-	dbPassword := generatePassword()
-	// Create the db user in Atlas
-	res, err := r.createDBUserInAtlas(conn, projectID, dbUserName, dbPassword, inventory, log)
-	if err != nil {
-		return res, err
-	}
+	if conn.Status.CredentialsRef == nil {
+		// Generate a db username and password
+		dbUserName := fmt.Sprintf("atlas-db-user-%v", time.Now().UnixNano())
+		dbPassword := generatePassword()
+		// Create the db user in Atlas
+		res, err := r.createDBUserInAtlas(conn, projectID, dbUserName, dbPassword, inventory, log)
+		if err != nil {
+			return res, err
+		}
 
-	// Now create a secret to store the password locally
-	secret := getOwnedSecret(conn, dbUserName, dbPassword)
-	secretCreated, err := r.Clientset.CoreV1().Secrets(req.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
-	if err != nil {
-		// Clean up the db user in atlas that was just created
-		_ = r.deleteDBUserFromAtlas(instance.InstanceInfo[dbaas.ProjectIDKey], dbUserName, inventory, log)
-		result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
-		dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
-		return ctrl.Result{}, fmt.Errorf("failed to create secret:%w", err)
+		// Now create a secret to store the password locally
+		secret := getOwnedSecret(conn, dbUserName, dbPassword)
+		secretCreated, err := r.Clientset.CoreV1().Secrets(req.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
+		if err != nil {
+			// Clean up the db user in atlas that was just created
+			_ = r.deleteDBUserFromAtlas(instance.InstanceInfo[dbaas.ProjectIDKey], dbUserName, inventory, log)
+			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
+			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			return ctrl.Result{}, fmt.Errorf("failed to create secret:%w", err)
+		}
+		conn.Status.CredentialsRef = &corev1.LocalObjectReference{Name: secretCreated.Name}
 	}
 
 	// Update the status
 	dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionTrue, "Ready", "")
-	conn.Status.CredentialsRef = &corev1.LocalObjectReference{Name: secretCreated.Name}
-	conn.Status.ConnectionInfoRef = &corev1.LocalObjectReference{Name: cmCreated.Name}
 	return ctrl.Result{}, nil
 }
 

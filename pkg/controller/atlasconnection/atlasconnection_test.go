@@ -387,7 +387,6 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 				assert.NotEmpty(t, connectionUpdated.Status.ConnectionInfoRef.Name)
 				assert.NotEmpty(t, connectionUpdated.Status.CredentialsRef.Name)
 			} else {
-				assert.Nil(t, connectionUpdated.Status.ConnectionInfoRef)
 				assert.Nil(t, connectionUpdated.Status.CredentialsRef)
 			}
 		})
