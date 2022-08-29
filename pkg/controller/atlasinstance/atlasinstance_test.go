@@ -253,21 +253,21 @@ func TestSetInstanceStatusWithClusterInfo(t *testing.T) {
 		clusterName string
 		projectName string
 		expErrMsg   string
-		expPhase    string
+		expPhase    dbaasv1alpha1.DBaasInstancePhase
 		expStatus   string
 	}{
 		"ClusterCreating": {
 			clusterName: "myclustercreating",
 			projectName: "myproject",
 			expErrMsg:   "",
-			expPhase:    "Creating",
+			expPhase:    dbaasv1alpha1.InstancePhaseCreating,
 			expStatus:   "True",
 		},
 		"ClusterReady": {
 			clusterName: "myclusterready",
 			projectName: "myproject",
 			expErrMsg:   "",
-			expPhase:    "Ready",
+			expPhase:    dbaasv1alpha1.InstancePhaseReady,
 			expStatus:   "True",
 		},
 		"InvalidProject": {
@@ -368,7 +368,7 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	tcName := "mytest"
 	clusterName := "myclusternew"
 	projectName := "myproject"
-	expectedPhase := "Pending"
+	expectedPhase := dbaasv1alpha1.InstancePhasePending
 	expectedErrString := "CLUSTER_NOT_FOUND"
 	expectedRequeue := true
 	inventory := &dbaas.MongoDBAtlasInventory{
