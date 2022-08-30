@@ -306,8 +306,7 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasProject(cx context.Contex
 		if err != nil {
 			return
 		}
-		// Fetch the project name from newly created CR
-		atlasProject, err = r.getAtlasProject(cx, inst)
+		atlasProject = project
 	}
 	return
 }
