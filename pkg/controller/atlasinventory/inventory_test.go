@@ -87,7 +87,7 @@ func setupMockAltasServer(t *testing.T) (client *mongodbatlas.Client, teardown f
 		if !ok {
 			fmt.Fprint(w, "group-id is missing in parameters")
 		}
-		data, err := ioutil.ReadFile(fmt.Sprintf("../../../test/e2e/data/atlasclusterlistresp_%s.json", groupID))
+		data, err := ioutil.ReadFile(fmt.Sprintf("../../../test/e2e/data/atlasdeploymentlistresp_%s.json", groupID))
 		assert.NoError(t, err)
 		if err == nil {
 			fmt.Fprint(w, string(data))

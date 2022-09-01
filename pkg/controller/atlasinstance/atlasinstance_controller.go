@@ -227,7 +227,7 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasDeployment(cx context.Con
 		return ctrl.Result{}, err
 	}
 
-	result := setInstanceStatusWithClusterInfo(atlasClient, inst, atlasDeployment, instData.ProjectName)
+	result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, instData.ProjectName)
 	if !result.IsOk() {
 		log.Infof("Error setting instance status: %v", result.Message())
 		return ctrl.Result{}, errors.New(result.Message())
@@ -461,7 +461,7 @@ func instanceMutateFn(atlasProject *v1.AtlasProject, atlasDeployment *v1.AtlasDe
 	}
 }
 
-func setInstanceStatusWithClusterInfo(atlasClient *mongodbatlas.Client, inst *dbaas.MongoDBAtlasInstance, atlasDeployment *v1.AtlasDeployment, project string) workflow.Result {
+func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst *dbaas.MongoDBAtlasInstance, atlasDeployment *v1.AtlasDeployment, project string) workflow.Result {
 	instInfo, result := atlasinventory.GetClusterInfo(atlasClient, project, inst.Spec.Name)
 	if result.IsOk() {
 		// Stores the phase info in inst.Status.Phase and remove from instInfo.InstanceInf map
@@ -476,7 +476,7 @@ func setInstanceStatusWithClusterInfo(atlasClient *mongodbatlas.Client, inst *db
 	}
 	statusFound := false
 	for _, cond := range atlasDeployment.Status.Conditions {
-		if cond.Type == status.ClusterReadyType {
+		if cond.Type == status.DeploymentReadyType {
 			statusFound = true
 			if cond.Status == corev1.ConditionTrue {
 				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)

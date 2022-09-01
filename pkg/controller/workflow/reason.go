@@ -34,14 +34,14 @@ const (
 
 // Atlas Cluster reasons
 const (
-	ClusterNotCreatedInAtlas           ConditionReason = "ClusterNotCreatedInAtlas"
-	ClusterNotUpdatedInAtlas           ConditionReason = "ClusterNotUpdatedInAtlas"
-	ClusterCreating                    ConditionReason = "ClusterCreating"
-	ClusterUpdating                    ConditionReason = "ClusterUpdating"
-	ClusterDeleting                    ConditionReason = "ClusterDeleting"
-	ClusterDeleted                     ConditionReason = "ClusterDeleted"
-	ClusterConnectionSecretsNotCreated ConditionReason = "ClusterConnectionSecretsNotCreated"
-	ClusterAdvancedOptionsAreNotReady  ConditionReason = "ClusterAdvancedOptionsAreNotReady"
+	DeploymentNotCreatedInAtlas           ConditionReason = "DeploymentNotCreatedInAtlas"
+	DeploymentNotUpdatedInAtlas           ConditionReason = "DeploymentNotUpdatedInAtlas"
+	DeploymentCreating                    ConditionReason = "DeploymentCreating"
+	DeploymentUpdating                    ConditionReason = "DeploymentUpdating"
+	DeploymentDeleting                    ConditionReason = "DeploymentDeleting"
+	DeploymentDeleted                     ConditionReason = "DeploymentDeleted"
+	DeploymentConnectionSecretsNotCreated ConditionReason = "DeploymentConnectionSecretsNotCreated"
+	DeploymentAdvancedOptionsAreNotReady  ConditionReason = "DeploymentAdvancedOptionsAreNotReady"
 )
 
 // Atlas Database User reasons
