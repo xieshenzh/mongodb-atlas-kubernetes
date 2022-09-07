@@ -5,6 +5,9 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"go.mongodb.org/atlas/mongodbatlas"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
@@ -76,7 +79,8 @@ func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dba
 	// Deleting - cluster deletion in progress
 	// Deleted - cluster has been deleted
 	// Ready - cluster provisioning complete
-	phase := parsePhase(strings.Title(strings.ToLower(cluster.StateName)))
+	caser := cases.Title(language.AmericanEnglish)
+	phase := parsePhase(caser.String(strings.ToLower(cluster.StateName)))
 	provider := cluster.ProviderSettings.BackingProviderName
 	if len(provider) == 0 {
 		provider = cluster.ProviderSettings.ProviderName
