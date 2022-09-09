@@ -44,7 +44,7 @@
    "mongoURI":"mongodb://dmycluster-shard-00-00.hhhjj.mongodb.net:27017,mycluster-shard-00-01.hhhjj.mongodb.net:27017,mycluster-shard-00-02.hhhjj.mongodb.net:27017",
    "mongoURIUpdated":"2021-09-13T13:53:50Z",
    "mongoURIWithOptions":"mongodb://dmycluster-shard-00-00.hhhjj.mongodb.net:27017,mycluster-shard-00-01.hhhjj.mongodb.net:27017,mycluster-shard-00-02.hhhjj.mongodb.net:27017/?ssl=true&authSource=admin&replicaSet=atlas-nwp2f7-shard-0",
-   "name":"myclusterready",
+   "name":"mydeploymentready",
    "numShards":1,
    "paused":false,
    "pitEnabled":false,
@@ -86,7 +86,7 @@
       }
    ],
    "rootCertType":"ISRGROOTX1",
-   "srvAddress":"mongodb+srv://myclusterready.hhhjj.mongodb.net",
+   "srvAddress":"mongodb+srv://mydeploymentready.hhhjj.mongodb.net",
    "stateName":"IDLE",
    "versionReleaseSystem":"LTS"
 }

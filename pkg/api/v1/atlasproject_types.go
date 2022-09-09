@@ -153,7 +153,7 @@ func (p *AtlasProject) GetCondition(condType status.ConditionType) *status.Condi
 
 // CheckConditions check AtlasProject conditions
 // First check if ReadyType condition exists and is True
-// Then check if a condition of ProjectReadyType, ClusterReadyType, IPAccessListReadyType or PrivateEndpointReadyType condition exists and is False
+// Then check if a condition of ProjectReadyType, DeploymentReadyType, IPAccessListReadyType or PrivateEndpointReadyType condition exists and is False
 // returns nil otherwise
 func (p *AtlasProject) CheckConditions() *status.Condition {
 	cond := p.GetCondition(status.ReadyType)
@@ -164,7 +164,7 @@ func (p *AtlasProject) CheckConditions() *status.Condition {
 	if cond != nil && cond.Status == corev1.ConditionFalse {
 		return cond
 	}
-	cond = p.GetCondition(status.ClusterReadyType)
+	cond = p.GetCondition(status.DeploymentReadyType)
 	if cond != nil && cond.Status == corev1.ConditionFalse {
 		return cond
 	}

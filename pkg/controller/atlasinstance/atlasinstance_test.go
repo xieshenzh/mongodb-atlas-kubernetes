@@ -48,7 +48,7 @@ import (
 func TestGetInstanceData(t *testing.T) {
 	log := zaptest.Logger(t).Sugar()
 	testCase := map[string]struct {
-		clusterName         string
+		deploymentName      string
 		projectName         string
 		providerName        string
 		regionName          string
@@ -59,7 +59,7 @@ func TestGetInstanceData(t *testing.T) {
 		expErrMsg           string
 	}{
 		"Nominal": {
-			clusterName:         "myCluster",
+			deploymentName:      "myDeployment",
 			projectName:         "myProject",
 			providerName:        "GCP",
 			regionName:          "GCP_REGION",
@@ -69,8 +69,8 @@ func TestGetInstanceData(t *testing.T) {
 			expInstanceSizeName: "M10",
 			expErrMsg:           "",
 		},
-		"MissingClusterName": {
-			clusterName:         "",
+		"MissingDeploymentName": {
+			deploymentName:      "",
 			projectName:         "myProject",
 			providerName:        "GCP",
 			regionName:          "GCP_REGION",
@@ -81,7 +81,7 @@ func TestGetInstanceData(t *testing.T) {
 			expErrMsg:           "missing clusterName",
 		},
 		"MissingProjectName": {
-			clusterName:         "myCluster",
+			deploymentName:      "myDeployment",
 			projectName:         "",
 			providerName:        "GCP",
 			regionName:          "GCP_REGION",
@@ -92,7 +92,7 @@ func TestGetInstanceData(t *testing.T) {
 			expErrMsg:           "missing projectName",
 		},
 		"UseDefaultProvider": {
-			clusterName:         "myCluster",
+			deploymentName:      "myDeployment",
 			projectName:         "myProject",
 			providerName:        "",
 			regionName:          "AWS_REGION",
@@ -103,7 +103,7 @@ func TestGetInstanceData(t *testing.T) {
 			expErrMsg:           "",
 		},
 		"UseDefaultRegion": {
-			clusterName:         "myCluster",
+			deploymentName:      "myDeployment",
 			projectName:         "myProject",
 			providerName:        "AWS",
 			regionName:          "",
@@ -114,7 +114,7 @@ func TestGetInstanceData(t *testing.T) {
 			expErrMsg:           "",
 		},
 		"UseDefaultInstanceSizeName": {
-			clusterName:         "myCluster",
+			deploymentName:      "myDeployment",
 			projectName:         "myProject",
 			providerName:        "AWS",
 			regionName:          "US_EAST_1",
@@ -142,7 +142,7 @@ func TestGetInstanceData(t *testing.T) {
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
-					Name:          tc.clusterName,
+					Name:          tc.deploymentName,
 					CloudProvider: tc.providerName,
 					CloudRegion:   tc.regionName,
 					OtherInstanceParams: map[string]string{
@@ -154,7 +154,7 @@ func TestGetInstanceData(t *testing.T) {
 
 			expected := &InstanceData{
 				ProjectName:      tc.projectName,
-				ClusterName:      tc.clusterName,
+				ClusterName:      tc.deploymentName,
 				ProviderName:     tc.expProviderName,
 				RegionName:       tc.expRegionName,
 				InstanceSizeName: tc.expInstanceSizeName,
@@ -210,25 +210,25 @@ func setupMockAltasServer(t *testing.T) (client *mongodbatlas.Client, teardown f
 		}
 	}).Methods(http.MethodGet)
 
-	router.HandleFunc("/api/atlas/v1.0/groups/{group-id}/clusters/{cluster-name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/api/atlas/v1.0/groups/{group-id}/clusters/{deployment-name}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		groupID, ok := vars["group-id"]
 		if !ok {
 			fmt.Fprint(w, "group-id is missing in parameters")
 		}
-		clusterName, ok := vars["cluster-name"]
+		deploymentName, ok := vars["deployment-name"]
 		if !ok {
-			fmt.Fprint(w, "cluster-name is missing in parameters")
+			fmt.Fprint(w, "deployment-name is missing in parameters")
 		}
-		data, err := ioutil.ReadFile(fmt.Sprintf("../../../test/e2e/data/atlasclusterget_%s_%s.json", groupID, clusterName))
+		data, err := ioutil.ReadFile(fmt.Sprintf("../../../test/e2e/data/atlasdeploymentget_%s_%s.json", groupID, deploymentName))
 		if err == nil {
 			assert.NoError(t, err)
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprint(w, string(data))
 		} else {
 			w.WriteHeader(http.StatusNotFound)
-			f := "{\"detail\":\"No cluster named %s exists in group %s.\",\"error\":404,\"errorCode\":\"CLUSTER_NOT_FOUND\",\"parameters\":[\"%s\",\"groupid123\"],\"reason\":\"Not Found\"}"
-			fmt.Fprintf(w, f, clusterName, groupID, clusterName)
+			f := "{\"detail\":\"No deployment named %s exists in group %s.\",\"error\":404,\"errorCode\":\"CLUSTER_NOT_FOUND\",\"parameters\":[\"%s\",\"groupid123\"],\"reason\":\"Not Found\"}"
+			fmt.Fprintf(w, f, deploymentName, groupID, deploymentName)
 		}
 	}).Methods(http.MethodGet)
 
@@ -244,43 +244,43 @@ func setupMockAltasServer(t *testing.T) (client *mongodbatlas.Client, teardown f
 	return client, server.Close
 }
 
-func TestSetInstanceStatusWithClusterInfo(t *testing.T) {
+func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 	atlasClient, teardown := setupMockAltasServer(t)
 	defer teardown()
 
 	namespace := "default"
 	testCase := map[string]struct {
-		clusterName string
-		projectName string
-		expErrMsg   string
-		expPhase    dbaasv1alpha1.DBaasInstancePhase
-		expStatus   string
+		deploymentName string
+		projectName    string
+		expErrMsg      string
+		expPhase       dbaasv1alpha1.DBaasInstancePhase
+		expStatus      string
 	}{
-		"ClusterCreating": {
-			clusterName: "myclustercreating",
-			projectName: "myproject",
-			expErrMsg:   "",
-			expPhase:    dbaasv1alpha1.InstancePhaseCreating,
-			expStatus:   "True",
+		"DeploymentCreating": {
+			deploymentName: "mydeploymentcreating",
+			projectName:    "myproject",
+			expErrMsg:      "",
+			expPhase:       dbaasv1alpha1.InstancePhaseCreating,
+			expStatus:      "True",
 		},
-		"ClusterReady": {
-			clusterName: "myclusterready",
-			projectName: "myproject",
-			expErrMsg:   "",
-			expPhase:    dbaasv1alpha1.InstancePhaseReady,
-			expStatus:   "True",
+		"DeploymentReady": {
+			deploymentName: "mydeploymentready",
+			projectName:    "myproject",
+			expErrMsg:      "",
+			expPhase:       dbaasv1alpha1.InstancePhaseReady,
+			expStatus:      "True",
 		},
 		"InvalidProject": {
-			clusterName: "myclusterready",
-			projectName: "myproject-invalid",
-			expErrMsg:   "NOT_IN_GROUP",
+			deploymentName: "mydeploymentready",
+			projectName:    "myproject-invalid",
+			expErrMsg:      "NOT_IN_GROUP",
 		},
 	}
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
 			atlasDeployment := &v1.AtlasDeployment{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-cluster-free",
+					Name:      "my-deployment-free",
 					Namespace: namespace,
 				},
 				Spec: v1.AtlasDeploymentSpec{
@@ -289,7 +289,7 @@ func TestSetInstanceStatusWithClusterInfo(t *testing.T) {
 						Namespace: namespace,
 					},
 					DeploymentSpec: &v1.DeploymentSpec{
-						Name: tc.clusterName,
+						Name: tc.deploymentName,
 						ProviderSettings: &v1.ProviderSettingsSpec{
 							BackingProviderName: "AWS",
 							InstanceSizeName:    "M0",
@@ -307,7 +307,7 @@ func TestSetInstanceStatusWithClusterInfo(t *testing.T) {
 								LastTransitionTime: metav1.Now(),
 							},
 							{
-								Type:               status.ConditionType("ClusterReady"),
+								Type:               status.ConditionType("DeploymentReady"),
 								Status:             corev1.ConditionTrue,
 								LastTransitionTime: metav1.Now(),
 							},
@@ -325,13 +325,13 @@ func TestSetInstanceStatusWithClusterInfo(t *testing.T) {
 						Name:      "my-inventory",
 						Namespace: namespace,
 					},
-					Name: tc.clusterName,
+					Name: tc.deploymentName,
 					OtherInstanceParams: map[string]string{
 						"projectName": tc.projectName,
 					},
 				},
 			}
-			result := setInstanceStatusWithClusterInfo(atlasClient, inst, atlasDeployment, tc.projectName)
+			result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, tc.projectName)
 			if len(tc.expErrMsg) == 0 {
 				cond := dbaas.GetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType)
 				assert.NotNil(t, cond)
@@ -366,7 +366,7 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	}
 
 	tcName := "mytest"
-	clusterName := "myclusternew"
+	deploymentName := "mydeploymentnew"
 	projectName := "myproject"
 	expectedPhase := dbaasv1alpha1.InstancePhasePending
 	expectedErrString := "CLUSTER_NOT_FOUND"
@@ -414,7 +414,7 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 			Namespace: "dbaas-operator",
 		},
 		Spec: dbaasv1alpha1.DBaaSInstanceSpec{
-			Name: clusterName,
+			Name: deploymentName,
 			InventoryRef: dbaasv1alpha1.NamespacedName{
 				Name:      inventory.Name,
 				Namespace: inventory.Namespace,
