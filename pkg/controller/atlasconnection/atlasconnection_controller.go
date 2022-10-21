@@ -150,8 +150,16 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 	projectID := instance.InstanceInfo[dbaas.ProjectIDKey]
 
 	if conn.Status.ConnectionInfoRef == nil {
+		srvString := instance.InstanceInfo[dbaas.ConnectionStringsStandardSrvKey]
+		if len(srvString) == 0 {
+			log.Info("Instance connection strings are empty. Will retry.")
+			result := workflow.Terminate(workflow.MongoDBAtlasInstanceNotReady, "Atlas database instance not ready")
+			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			// Requeue
+			return ctrl.Result{}, fmt.Errorf("instance connection strings are empty")
+		}
 		// Now create a configmap for non-sensitive information needed for connecting to the DB instance
-		cm := getOwnedConfigMap(conn, instance.InstanceInfo[dbaas.ConnectionStringsStandardSrvKey])
+		cm := getOwnedConfigMap(conn, srvString)
 		cmCreated, err := r.Clientset.CoreV1().ConfigMaps(req.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
 		if err != nil {
 			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())

@@ -206,6 +206,19 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 			expectedStatus:      "False",
 			expectedReason:      "InventoryNotFound",
 		},
+		"InstanceNotReady": {
+			createConnection:    true,
+			configMapCreateFail: false,
+			secretCreateFail:    false,
+			instanceID:          "70b7a72f4877d05880cNoSrv",
+			inventoryReason:     "SyncOK",
+			inventoryStatus:     "True",
+			instancesPath:       "../../../test/e2e/data/atlasinventoryconditionsnosrv.json",
+			expectedErrString:   "instance connection strings are empty",
+			expectedRequeue:     false,
+			expectedStatus:      "False",
+			expectedReason:      "InstanceNotReady",
+		},
 		"ConfigMapCreateFail": {
 			createConnection:    true,
 			configMapCreateFail: true,
@@ -251,7 +264,7 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 		t.Run(tcName, func(t *testing.T) {
 			instances := []dbaasv1alpha1.Instance{}
 			if len(tc.instancesPath) > 0 {
-				data, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
+				data, err := ioutil.ReadFile(tc.instancesPath)
 				assert.NoError(t, err)
 				err = json.Unmarshal(data, &instances)
 				assert.NoError(t, err)

@@ -1,0 +1,14 @@
+[
+    {
+      "instanceID":"70b7a72f4877d05880cNoSrv",
+      "name":"testb",
+      "instanceInfo":{
+         "instanceSizeName":"M10",
+         "state":"Creating",
+         "projectID":"608df5e652e1944293e8584a",
+         "projectName":"Project 1",
+         "providerName":"AWS",
+         "regionName":"US_EAST_1"
+      }
+   }
+]
