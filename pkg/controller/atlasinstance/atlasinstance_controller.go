@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -56,6 +57,12 @@ import (
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/watch"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/workflow"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/util/kube"
+)
+
+const (
+	instancePhaseChangedInAtlas    = "InstancePhaseChangedInAtlas"
+	instancePhaseChangedInAtlasMsg = "db instance phase has changed in Atlas"
+	updateAnnotationKey            = "atlas.mongodb.com/updated-at"
 )
 
 // MongoDBAtlasInstanceReconciler reconciles a MongoDBAtlasInstance object
@@ -227,11 +234,17 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasDeployment(cx context.Con
 		return ctrl.Result{}, err
 	}
 
-	result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, instData.ProjectName)
+	stateChangedInAtlas, result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, instData.ProjectName)
 	if !result.IsOk() {
+		if stateChangedInAtlas {
+			// Update an annotation in the atlas deployment resource to trigger its reconciliation
+			log.Infof("Trigger AtlasDeployment reconciliation. Reason: %v", result.Message())
+			_ = r.annotateAtlasDeployment(cx, atlasDeployment)
+		}
 		log.Infof("Error setting instance status: %v", result.Message())
 		return ctrl.Result{}, errors.New(result.Message())
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -358,6 +371,16 @@ func (r *MongoDBAtlasInstanceReconciler) getAtlasProjectForCreation(instance *db
 	}, nil
 }
 
+func (r *MongoDBAtlasInstanceReconciler) annotateAtlasDeployment(cx context.Context, atlasDeployment *v1.AtlasDeployment) error {
+	annotations := atlasDeployment.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	annotations[updateAnnotationKey] = time.Now().Format(time.RFC3339)
+	atlasDeployment.SetAnnotations(annotations)
+	return r.Client.Update(cx, atlasDeployment, &client.UpdateOptions{})
+}
+
 // getAtlasDeploymentSpec returns the spec for the desired cluster
 func getAtlasDeploymentSpec(atlasProject *v1.AtlasProject, data *InstanceData) *v1.AtlasDeploymentSpec {
 	var providerSettingsSpec *v1.ProviderSettingsSpec
@@ -461,7 +484,7 @@ func instanceMutateFn(atlasProject *v1.AtlasProject, atlasDeployment *v1.AtlasDe
 	}
 }
 
-func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst *dbaas.MongoDBAtlasInstance, atlasDeployment *v1.AtlasDeployment, project string) workflow.Result {
+func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst *dbaas.MongoDBAtlasInstance, atlasDeployment *v1.AtlasDeployment, project string) (bool, workflow.Result) {
 	instInfo, result := atlasinventory.GetClusterInfo(atlasClient, project, inst.Spec.Name)
 	if result.IsOk() {
 		// Stores the phase info in inst.Status.Phase and remove from instInfo.InstanceInf map
@@ -479,7 +502,12 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 		if cond.Type == status.DeploymentReadyType {
 			statusFound = true
 			if cond.Status == corev1.ConditionTrue {
-				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
+				if inst.Status.Phase == dbaasv1alpha1.InstancePhaseReady {
+					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
+					return false, result
+				}
+				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, instancePhaseChangedInAtlas, instancePhaseChangedInAtlasMsg)
+				return true, result
 			} else {
 				if strings.Contains(cond.Message, FreeClusterFailed) {
 					inst.Status.Phase = dbaasv1alpha1.InstancePhaseFailed
@@ -491,6 +519,5 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 	if !statusFound {
 		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(dbaasv1alpha1.InstancePhasePending), "Waiting for cluster creation to start")
 	}
-
-	return result
+	return false, result
 }

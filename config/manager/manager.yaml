@@ -60,5 +60,5 @@ spec:
                 fieldRef:
                   fieldPath: metadata.namespace
             - name: SYNC_PERIOD_MIN
-              value: 180
+              value: "180"
       terminationGracePeriodSeconds: 10

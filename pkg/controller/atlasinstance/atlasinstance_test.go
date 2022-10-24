@@ -250,25 +250,40 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 
 	namespace := "default"
 	testCase := map[string]struct {
-		deploymentName string
-		projectName    string
-		expErrMsg      string
-		expPhase       dbaasv1alpha1.DBaasInstancePhase
-		expStatus      string
+		deploymentName         string
+		projectName            string
+		deploymentCRStatus     corev1.ConditionStatus
+		expErrMsg              string
+		expPhase               dbaasv1alpha1.DBaasInstancePhase
+		expStatus              string
+		expStateChangedInAtlas bool
 	}{
-		"DeploymentCreating": {
-			deploymentName: "mydeploymentcreating",
-			projectName:    "myproject",
-			expErrMsg:      "",
-			expPhase:       dbaasv1alpha1.InstancePhaseCreating,
-			expStatus:      "True",
+		"DeploymentCreatingNorminal": {
+			deploymentName:         "mydeploymentcreating",
+			projectName:            "myproject",
+			deploymentCRStatus:     corev1.ConditionFalse,
+			expErrMsg:              "",
+			expPhase:               dbaasv1alpha1.InstancePhaseCreating,
+			expStatus:              "False",
+			expStateChangedInAtlas: false,
+		},
+		"DeploymentCreatingChangedInAtlas": {
+			deploymentName:         "mydeploymentcreating",
+			projectName:            "myproject",
+			deploymentCRStatus:     corev1.ConditionTrue,
+			expErrMsg:              "",
+			expPhase:               dbaasv1alpha1.InstancePhaseCreating,
+			expStatus:              "False",
+			expStateChangedInAtlas: true,
 		},
 		"DeploymentReady": {
-			deploymentName: "mydeploymentready",
-			projectName:    "myproject",
-			expErrMsg:      "",
-			expPhase:       dbaasv1alpha1.InstancePhaseReady,
-			expStatus:      "True",
+			deploymentName:         "mydeploymentready",
+			projectName:            "myproject",
+			deploymentCRStatus:     corev1.ConditionTrue,
+			expErrMsg:              "",
+			expPhase:               dbaasv1alpha1.InstancePhaseReady,
+			expStatus:              "True",
+			expStateChangedInAtlas: false,
 		},
 		"InvalidProject": {
 			deploymentName: "mydeploymentready",
@@ -303,12 +318,12 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 						Conditions: []status.Condition{
 							{
 								Type:               status.ConditionType("Ready"),
-								Status:             corev1.ConditionTrue,
+								Status:             tc.deploymentCRStatus,
 								LastTransitionTime: metav1.Now(),
 							},
 							{
 								Type:               status.ConditionType("DeploymentReady"),
-								Status:             corev1.ConditionTrue,
+								Status:             tc.deploymentCRStatus,
 								LastTransitionTime: metav1.Now(),
 							},
 						},
@@ -331,13 +346,14 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 					},
 				},
 			}
-			result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, tc.projectName)
+			stateChangedInAtlas, result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, tc.projectName)
 			if len(tc.expErrMsg) == 0 {
 				cond := dbaas.GetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType)
 				assert.NotNil(t, cond)
 				assert.True(t, result.IsOk())
 				assert.Equal(t, inst.Status.Phase, tc.expPhase)
 				assert.Equal(t, string(cond.Status), tc.expStatus)
+				assert.Equal(t, stateChangedInAtlas, tc.expStateChangedInAtlas)
 			} else {
 				assert.Contains(t, result.Message(), tc.expErrMsg)
 			}

@@ -135,6 +135,11 @@ func main() {
 		watch.SelectNamespacesPredicate(config.WatchedNamespaces), // select only desired namespaces
 	}
 
+	globalPredicatesWithAnnotations := []predicate.Predicate{
+		watch.CommonPredicatesWithAnnotations(),                   // ignore spurious changes. status changes etc but allow annotation changes
+		watch.SelectNamespacesPredicate(config.WatchedNamespaces), // select only desired namespaces
+	}
+
 	cfg := mgr.GetConfig()
 	clientset, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
@@ -200,7 +205,7 @@ func main() {
 		AtlasDomain:      config.AtlasDomain,
 		GlobalAPISecret:  config.GlobalAPISecret,
 		ResourceWatcher:  watch.NewResourceWatcher(),
-		GlobalPredicates: globalPredicates,
+		GlobalPredicates: globalPredicatesWithAnnotations,
 		EventRecorder:    mgr.GetEventRecorderFor("AtlasDeployment"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AtlasDeployment")
