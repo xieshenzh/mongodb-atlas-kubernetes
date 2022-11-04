@@ -43,10 +43,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	"go.mongodb.org/atlas/mongodbatlas"
 
-	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
+	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1alpha2 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha2"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha1"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha2"
 	mdbv1 "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/watch"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/util/kube"
@@ -137,7 +139,8 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 	s := scheme.Scheme
 	utilruntime.Must(scheme.AddToScheme(s))
 	utilruntime.Must(mdbv1.AddToScheme(s))
-	utilruntime.Must(dbaas.AddToScheme(s))
+	utilruntime.Must(v1alpha1.AddToScheme(s))
+	utilruntime.Must(v1alpha2.AddToScheme(s))
 
 	atlasClient, teardown := setupMockAltasServer()
 	defer teardown()
@@ -262,7 +265,7 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			instances := []dbaasv1alpha1.Instance{}
+			instances := []dbaasv1alpha2.DatabaseService{}
 			if len(tc.instancesPath) > 0 {
 				data, err := ioutil.ReadFile(tc.instancesPath)
 				assert.NoError(t, err)
@@ -284,21 +287,21 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 				},
 			}
 
-			inventory := &dbaas.MongoDBAtlasInventory{
+			inventory := &v1alpha2.MongoDBAtlasInventory{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "dbaas.redhat.com/v1alpha1",
+					APIVersion: "dbaas.redhat.com/v1alpha2",
 					Kind:       "MongoDBAtlasInventory",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("inventory-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSInventorySpec{
-					CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+				Spec: dbaasv1alpha2.DBaaSInventorySpec{
+					CredentialsRef: &dbaasv1alpha2.LocalObjectReference{
 						Name: fmt.Sprintf("secret-%s", tcName),
 					},
 				},
-				Status: dbaasv1alpha1.DBaaSInventoryStatus{
+				Status: dbaasv1alpha2.DBaaSInventoryStatus{
 					Conditions: []metav1.Condition{
 						{
 							LastTransitionTime: metav1.Now(),
@@ -307,25 +310,26 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 							Type:               dbaasv1alpha1.DBaaSInventoryProviderSyncType,
 						},
 					},
-					Instances: instances,
+					DatabaseServices: instances,
 				},
 			}
 
-			connection := &dbaas.MongoDBAtlasConnection{
+			connection := &v1alpha2.MongoDBAtlasConnection{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "dbaas.redhat.com/v1alpha1",
+					APIVersion: "dbaas.redhat.com/v1alpha2",
 					Kind:       "MongoDBAtlasConnection",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("connection-%s", tcName),
 					Namespace: "myproject",
 				},
-				Spec: dbaasv1alpha1.DBaaSConnectionSpec{
-					InventoryRef: dbaasv1alpha1.NamespacedName{
+				Spec: dbaasv1alpha2.DBaaSConnectionSpec{
+					InventoryRef: dbaasv1alpha2.NamespacedName{
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
-					InstanceID: tc.instanceID,
+					DatabaseServiceID:   tc.instanceID,
+					DatabaseServiceType: dbaasv1alpha2.InstanceDatabaseService,
 				},
 			}
 			objs := []runtime.Object{secret}
@@ -378,7 +382,7 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 				assert.Contains(t, err.Error(), tc.expectedErrString)
 			}
 			assert.Equal(t, tc.expectedRequeue, res.Requeue)
-			connectionUpdated := &dbaas.MongoDBAtlasConnection{}
+			connectionUpdated := &v1alpha2.MongoDBAtlasConnection{}
 			err = client.Get(context.Background(),
 				types.NamespacedName{
 					Name:      connection.Name,
@@ -410,7 +414,8 @@ func TestDBUserDelete(t *testing.T) {
 	s := scheme.Scheme
 	utilruntime.Must(scheme.AddToScheme(s))
 	utilruntime.Must(mdbv1.AddToScheme(s))
-	utilruntime.Must(dbaas.AddToScheme(s))
+	utilruntime.Must(v1alpha1.AddToScheme(s))
+	utilruntime.Must(v1alpha2.AddToScheme(s))
 
 	atlasClient, teardown := setupMockAltasServer()
 	defer teardown()
@@ -456,7 +461,7 @@ func TestDBUserDelete(t *testing.T) {
 
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			instances := []dbaasv1alpha1.Instance{}
+			instances := []dbaasv1alpha2.DatabaseService{}
 			if len(tc.instancesPath) > 0 {
 				data, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
 				assert.NoError(t, err)
@@ -478,21 +483,21 @@ func TestDBUserDelete(t *testing.T) {
 				},
 			}
 
-			inventory := &dbaas.MongoDBAtlasInventory{
+			inventory := &v1alpha2.MongoDBAtlasInventory{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "dbaas.redhat.com/v1alpha1",
+					APIVersion: "dbaas.redhat.com/v1alpha2",
 					Kind:       "MongoDBAtlasInventory",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("inventory-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSInventorySpec{
-					CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+				Spec: dbaasv1alpha2.DBaaSInventorySpec{
+					CredentialsRef: &dbaasv1alpha2.LocalObjectReference{
 						Name: fmt.Sprintf("secret-%s", tcName),
 					},
 				},
-				Status: dbaasv1alpha1.DBaaSInventoryStatus{
+				Status: dbaasv1alpha2.DBaaSInventoryStatus{
 					Conditions: []metav1.Condition{
 						{
 							LastTransitionTime: metav1.Now(),
@@ -501,24 +506,25 @@ func TestDBUserDelete(t *testing.T) {
 							Type:               dbaasv1alpha1.DBaaSInventoryProviderSyncType,
 						},
 					},
-					Instances: instances,
+					DatabaseServices: instances,
 				},
 			}
-			connection := &dbaas.MongoDBAtlasConnection{
+			connection := &v1alpha2.MongoDBAtlasConnection{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "dbaas.redhat.com/v1alpha1",
+					APIVersion: "dbaas.redhat.com/v1alpha2",
 					Kind:       "MongoDBAtlasConnection",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("connection-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSConnectionSpec{
-					InventoryRef: dbaasv1alpha1.NamespacedName{
+				Spec: dbaasv1alpha2.DBaaSConnectionSpec{
+					InventoryRef: dbaasv1alpha2.NamespacedName{
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
-					InstanceID: tc.instanceID,
+					DatabaseServiceID:   tc.instanceID,
+					DatabaseServiceType: dbaasv1alpha2.InstanceDatabaseService,
 				},
 			}
 			objs := []runtime.Object{secret, connection}
@@ -560,7 +566,7 @@ func TestDBUserDelete(t *testing.T) {
 			log := r.Log.With("MongoDBAtlasConnection", kube.ObjectKeyFromObject(connection))
 			_, err := r.Reconcile(context.Background(), req)
 			assert.NoError(t, err)
-			connectionUpdated := &dbaas.MongoDBAtlasConnection{}
+			connectionUpdated := &v1alpha2.MongoDBAtlasConnection{}
 			err = client.Get(context.Background(),
 				types.NamespacedName{
 					Name:      connection.Name,

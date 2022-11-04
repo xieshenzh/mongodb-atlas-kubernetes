@@ -43,10 +43,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	"go.mongodb.org/atlas/mongodbatlas"
 
-	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
+	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1alpha2 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha2"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha1"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha2"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/atlas"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/watch"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/workflow"
@@ -88,7 +90,7 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 	_ = cx
 	log := r.Log.With("MongoDBAtlasConnection", req.NamespacedName)
 
-	conn := &dbaas.MongoDBAtlasConnection{}
+	conn := &v1alpha2.MongoDBAtlasConnection{}
 	if err := r.Client.Get(cx, req.NamespacedName, conn); err != nil {
 		if apiErrors.IsNotFound(err) {
 			// CR deleted since request queued, child objects getting GC'd, no requeue
@@ -105,14 +107,14 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 	}
 
 	// This update will make sure the status is always updated in case of any errors or successful result
-	defer func(c *dbaas.MongoDBAtlasConnection) {
+	defer func(c *v1alpha2.MongoDBAtlasConnection) {
 		err := r.Client.Status().Update(cx, c)
 		if err != nil {
 			log.Infof("Could not update resource status:%v", err)
 		}
 	}(conn)
 
-	inventory := &dbaas.MongoDBAtlasInventory{}
+	inventory := &v1alpha2.MongoDBAtlasInventory{}
 	namespace := conn.Spec.InventoryRef.Namespace
 	if len(namespace) == 0 {
 		// Namespace is not populated in InventoryRef, default to the request's namespace
@@ -123,7 +125,7 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 			// The corresponding inventory is not found, no reqeue.
 			log.Info("MongoDBAtlasInventory resource not found, has been deleted")
 			result := workflow.InProgress(workflow.MongoDBAtlasConnectionInventoryNotFound, "inventory not found")
-			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Error fetching MongoDBAtlasInventory")
@@ -133,28 +135,28 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 	if !isInventoryReady(inventory) {
 		// The corresponding inventory is not ready yet, requeue
 		result := workflow.InProgress(workflow.MongoDBAtlasConnectionInventoryNotReady, "inventory not ready")
-		dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+		v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		// Requeue
 		return result.ReconcileResult(), errors.New("inventory not ready")
 	}
 
 	// Retrieve the instance from inventory based on instanceID
-	instance := getInstance(inventory, conn.Spec.InstanceID)
+	instance := getInstance(inventory, conn.Spec.DatabaseServiceID)
 	if instance == nil {
 		result := workflow.Terminate(workflow.MongoDBAtlasConnectionInstanceIDNotFound, "Atlas database instance not found")
-		dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+		v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		// No further reconciliation needed
 		return result.ReconcileResult(), nil
 	}
 
-	projectID := instance.InstanceInfo[dbaas.ProjectIDKey]
+	projectID := instance.ServiceInfo[v1alpha1.ProjectIDKey]
 
 	if conn.Status.ConnectionInfoRef == nil {
-		srvString := instance.InstanceInfo[dbaas.ConnectionStringsStandardSrvKey]
+		srvString := instance.ServiceInfo[v1alpha1.ConnectionStringsStandardSrvKey]
 		if len(srvString) == 0 {
 			log.Info("Instance connection strings are empty. Will retry.")
 			result := workflow.Terminate(workflow.MongoDBAtlasInstanceNotReady, "Atlas database instance not ready")
-			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			// Requeue
 			return ctrl.Result{}, fmt.Errorf("instance connection strings are empty")
 		}
@@ -163,7 +165,7 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 		cmCreated, err := r.Clientset.CoreV1().ConfigMaps(req.Namespace).Create(context.Background(), cm, metav1.CreateOptions{})
 		if err != nil {
 			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
-			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return ctrl.Result{}, fmt.Errorf("failed to create configmap:%w", err)
 		}
 		conn.Status.ConnectionInfoRef = &corev1.LocalObjectReference{Name: cmCreated.Name}
@@ -184,16 +186,16 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 		secretCreated, err := r.Clientset.CoreV1().Secrets(req.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
 		if err != nil {
 			// Clean up the db user in atlas that was just created
-			_ = r.deleteDBUserFromAtlas(instance.InstanceInfo[dbaas.ProjectIDKey], dbUserName, inventory, log)
+			_ = r.deleteDBUserFromAtlas(instance.ServiceInfo[v1alpha1.ProjectIDKey], dbUserName, inventory, log)
 			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
-			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return ctrl.Result{}, fmt.Errorf("failed to create secret:%w", err)
 		}
 		conn.Status.CredentialsRef = &corev1.LocalObjectReference{Name: secretCreated.Name}
 	}
 
 	// Update the status
-	dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionTrue, "Ready", "")
+	v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionTrue, "Ready", "")
 	return ctrl.Result{}, nil
 }
 
@@ -204,7 +206,7 @@ func (r *MongoDBAtlasConnectionReconciler) SetupWithManager(mgr ctrl.Manager) er
 	}
 
 	// Watch for changes to primary resource MongoDBAtlasConnection & handle delete separately
-	err = c.Watch(&source.Kind{Type: &dbaas.MongoDBAtlasConnection{}}, &watch.EventHandlerWithDelete{Controller: r}, watch.CommonPredicates())
+	err = c.Watch(&source.Kind{Type: &v1alpha2.MongoDBAtlasConnection{}}, &watch.EventHandlerWithDelete{Controller: r}, watch.CommonPredicates())
 	if err != nil {
 		return err
 	}
@@ -219,9 +221,9 @@ func (r *MongoDBAtlasConnectionReconciler) SetupWithManager(mgr ctrl.Manager) er
 
 // Delete implements a handler for the Delete event.
 func (r *MongoDBAtlasConnectionReconciler) Delete(e event.DeleteEvent) error {
-	conn, ok := e.Object.(*dbaas.MongoDBAtlasConnection)
+	conn, ok := e.Object.(*v1alpha2.MongoDBAtlasConnection)
 	if !ok {
-		r.Log.Errorf("Ignoring malformed Delete() call (expected type %T, got %T)", &dbaas.MongoDBAtlasConnection{}, e.Object)
+		r.Log.Errorf("Ignoring malformed Delete() call (expected type %T, got %T)", &v1alpha2.MongoDBAtlasConnection{}, e.Object)
 		return nil
 	}
 	log := r.Log.With("MongoDBAtlasConnection", kube.ObjectKeyFromObject(conn))
@@ -230,7 +232,7 @@ func (r *MongoDBAtlasConnectionReconciler) Delete(e event.DeleteEvent) error {
 	return nil
 }
 
-func (r *MongoDBAtlasConnectionReconciler) deleteDBUser(conn *dbaas.MongoDBAtlasConnection, log *zap.SugaredLogger) error {
+func (r *MongoDBAtlasConnectionReconciler) deleteDBUser(conn *v1alpha2.MongoDBAtlasConnection, log *zap.SugaredLogger) error {
 	if conn.Status.CredentialsRef == nil {
 		log.Infow("No credentialsRef provided. Nothing to delete.")
 		return nil
@@ -256,7 +258,7 @@ func (r *MongoDBAtlasConnectionReconciler) deleteDBUser(conn *dbaas.MongoDBAtlas
 	// The corresponding inventory and instanceID in the Spec are immutable, so we can determine the
 	// project ID from the instances in the inventory based on the instanceID.
 	// First find the corresponding inventory
-	inventory := &dbaas.MongoDBAtlasInventory{}
+	inventory := &v1alpha2.MongoDBAtlasInventory{}
 	if err := r.Client.Get(context.Background(), types.NamespacedName{Namespace: conn.Namespace, Name: conn.Spec.InventoryRef.Name}, inventory); err != nil {
 		if apiErrors.IsNotFound(err) {
 			// CR deleted since request queued, child objects getting GC'd, no requeue
@@ -274,14 +276,14 @@ func (r *MongoDBAtlasConnectionReconciler) deleteDBUser(conn *dbaas.MongoDBAtlas
 	}
 
 	// Retrieve the instance from inventory based on instanceID
-	instance := getInstance(inventory, conn.Spec.InstanceID)
+	instance := getInstance(inventory, conn.Spec.DatabaseServiceID)
 	if instance == nil {
 		log.Infow("No instance found in the inventory. Deletion done.")
 		return nil
 	}
 
 	// Get the projectID from the status
-	projectID, ok := instance.InstanceInfo[dbaas.ProjectIDKey]
+	projectID, ok := instance.ServiceInfo[v1alpha1.ProjectIDKey]
 	if !ok {
 		log.Infow("No projectID found. Deletion done.")
 		return nil
@@ -303,13 +305,13 @@ func (r *MongoDBAtlasConnectionReconciler) getSecret(namespace, name string) (*c
 }
 
 // createDBUserInAtlas create the database user in Atlas
-func (r *MongoDBAtlasConnectionReconciler) createDBUserInAtlas(conn *dbaas.MongoDBAtlasConnection, projectID, dbUserName, dbPassword string, inventory *dbaas.MongoDBAtlasInventory, log *zap.SugaredLogger) (ctrl.Result, error) {
+func (r *MongoDBAtlasConnectionReconciler) createDBUserInAtlas(conn *v1alpha2.MongoDBAtlasConnection, projectID, dbUserName, dbPassword string, inventory *v1alpha2.MongoDBAtlasInventory, log *zap.SugaredLogger) (ctrl.Result, error) {
 	dbUser := &mongodbatlas.DatabaseUser{
-		DatabaseName: dbaas.DefaultDatabase,
+		DatabaseName: v1alpha1.DefaultDatabase,
 		GroupID:      projectID,
 		Roles: []mongodbatlas.Role{
 			{
-				DatabaseName: dbaas.DefaultDatabase,
+				DatabaseName: v1alpha1.DefaultDatabase,
 				RoleName:     "readWriteAnyDatabase",
 			},
 		},
@@ -320,7 +322,7 @@ func (r *MongoDBAtlasConnectionReconciler) createDBUserInAtlas(conn *dbaas.Mongo
 	atlasConnection, err := atlas.ReadConnection(log, r.Client, r.GlobalAPISecret, inventory.ConnectionSecretObjectKey())
 	if err != nil {
 		result := workflow.Terminate(workflow.MongoDBAtlasConnectionAuthenticationError, err.Error())
-		dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+		v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		return result.ReconcileResult(), err
 	}
 
@@ -329,7 +331,7 @@ func (r *MongoDBAtlasConnectionReconciler) createDBUserInAtlas(conn *dbaas.Mongo
 		cl, err := atlas.Client(r.AtlasDomain, atlasConnection, log)
 		if err != nil {
 			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
-			dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			v1alpha2.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return result.ReconcileResult(), nil
 		}
 		atlasClient = &cl
@@ -338,14 +340,14 @@ func (r *MongoDBAtlasConnectionReconciler) createDBUserInAtlas(conn *dbaas.Mongo
 	// Try to create the db user
 	if _, _, err := atlasClient.DatabaseUsers.Create(context.Background(), projectID, dbUser); err != nil {
 		result := workflow.Terminate(workflow.DatabaseUserNotCreatedInAtlas, err.Error())
-		dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+		v1alpha2.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
 
 // deleteDBUserFromAtlas delete database user from Atlas
-func (r *MongoDBAtlasConnectionReconciler) deleteDBUserFromAtlas(projectID, dbUserName string, inventory *dbaas.MongoDBAtlasInventory, log *zap.SugaredLogger) error {
+func (r *MongoDBAtlasConnectionReconciler) deleteDBUserFromAtlas(projectID, dbUserName string, inventory *v1alpha2.MongoDBAtlasInventory, log *zap.SugaredLogger) error {
 	atlasConnection, err := atlas.ReadConnection(log, r.Client, r.GlobalAPISecret, inventory.ConnectionSecretObjectKey())
 	if err != nil {
 		return err
@@ -381,7 +383,7 @@ func getHost(connectionStringStandardSrv string) string {
 }
 
 // getOwnedConfigMap returns a configmap object with ownership set
-func getOwnedConfigMap(connection *dbaas.MongoDBAtlasConnection, connectionStringStandardSrv string) *corev1.ConfigMap {
+func getOwnedConfigMap(connection *v1alpha2.MongoDBAtlasConnection, connectionStringStandardSrv string) *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ConfigMap",
@@ -399,7 +401,7 @@ func getOwnedConfigMap(connection *dbaas.MongoDBAtlasConnection, connectionStrin
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					UID:                connection.GetUID(),
-					APIVersion:         "dbaas.redhat.com/v1alpha1",
+					APIVersion:         "dbaas.redhat.com/v1alpha2",
 					BlockOwnerDeletion: ptr.BoolPtr(false),
 					Controller:         ptr.BoolPtr(true),
 					Kind:               "MongoDBAtlasConnection",
@@ -408,16 +410,16 @@ func getOwnedConfigMap(connection *dbaas.MongoDBAtlasConnection, connectionStrin
 			},
 		},
 		Data: map[string]string{
-			dbaas.ProviderKey:           dbaas.Provider,
-			dbaas.ServiceBindingTypeKey: dbaas.ServiceBindingType,
-			dbaas.HostKey:               getHost(connectionStringStandardSrv),
-			dbaas.SrvKey:                "true",
+			v1alpha1.ProviderKey:           v1alpha1.Provider,
+			v1alpha1.ServiceBindingTypeKey: v1alpha1.ServiceBindingType,
+			v1alpha1.HostKey:               getHost(connectionStringStandardSrv),
+			v1alpha1.SrvKey:                "true",
 		},
 	}
 }
 
 // getOwnedSecret returns a secret object for database credentials with ownership set
-func getOwnedSecret(connection *dbaas.MongoDBAtlasConnection, username, password string) *corev1.Secret {
+func getOwnedSecret(connection *v1alpha2.MongoDBAtlasConnection, username, password string) *corev1.Secret {
 	return &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "Opaque",
@@ -434,7 +436,7 @@ func getOwnedSecret(connection *dbaas.MongoDBAtlasConnection, username, password
 			OwnerReferences: []metav1.OwnerReference{
 				{
 					UID:                connection.GetUID(),
-					APIVersion:         "dbaas.redhat.com/v1alpha1",
+					APIVersion:         "dbaas.redhat.com/v1alpha2",
 					BlockOwnerDeletion: ptr.BoolPtr(false),
 					Controller:         ptr.BoolPtr(true),
 					Kind:               "MongoDBAtlasConnection",
@@ -450,23 +452,25 @@ func getOwnedSecret(connection *dbaas.MongoDBAtlasConnection, username, password
 }
 
 // isReadyForBinding is the MongoDBAtlasConnection ready for binding already?
-func isReadyForBinding(conn *dbaas.MongoDBAtlasConnection) bool {
-	cond := dbaas.GetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType)
+func isReadyForBinding(conn *v1alpha2.MongoDBAtlasConnection) bool {
+	cond := v1alpha2.GetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType)
 	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
 // isInventoryReady is the MongoDBAtlasInvenotry ready?
-func isInventoryReady(inventory *dbaas.MongoDBAtlasInventory) bool {
-	cond := dbaas.GetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType)
+func isInventoryReady(inventory *v1alpha2.MongoDBAtlasInventory) bool {
+	cond := v1alpha2.GetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType)
 	return cond != nil && cond.Status == metav1.ConditionTrue
 }
 
 // getInstance returns an instance from the inventory based on instanceID
-func getInstance(inventory *dbaas.MongoDBAtlasInventory, instanceID string) *dbaasv1alpha1.Instance {
-	for _, instance := range inventory.Status.Instances {
-		if instance.InstanceID == instanceID {
-			// Found the instance based on its ID
-			return &instance
+func getInstance(inventory *v1alpha2.MongoDBAtlasInventory, instanceID string) *dbaasv1alpha2.DatabaseService {
+	for _, databaseService := range inventory.Status.DatabaseServices {
+		if databaseService.ServiceType == dbaasv1alpha2.InstanceDatabaseService {
+			if databaseService.ServiceID == instanceID {
+				// Found the instance based on its ID
+				return &databaseService
+			}
 		}
 	}
 	return nil

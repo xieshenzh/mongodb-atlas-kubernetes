@@ -12,3 +12,7 @@ resources:
 - ../../../manager
 - ../../../crd
 - ../../../rbac/clusterwide
+- ../../../webhook
+
+patchesStrategicMerge:
+- manager_webhook_patch.yaml

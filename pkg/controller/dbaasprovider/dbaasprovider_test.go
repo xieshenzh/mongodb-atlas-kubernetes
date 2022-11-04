@@ -35,9 +35,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	dbaasoperator "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha1"
 
-	dbaas "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
 	mdbv1 "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1"
 )
 
@@ -47,7 +47,7 @@ func TestDBaaSProviderCreate(t *testing.T) {
 	s := scheme.Scheme
 	utilruntime.Must(scheme.AddToScheme(s))
 	utilruntime.Must(mdbv1.AddToScheme(s))
-	utilruntime.Must(dbaas.AddToScheme(s))
+	utilruntime.Must(v1alpha1.AddToScheme(s))
 	logger := zaptest.Logger(t)
 
 	testCase := map[string]struct {
@@ -100,7 +100,7 @@ func TestDBaaSProviderCreate(t *testing.T) {
 			}
 
 			// Register DBaaSProvider CRD with the scheme
-			s.AddKnownTypeWithName(gvk, &dbaasoperator.DBaaSProvider{})
+			s.AddKnownTypeWithName(gvk, &dbaasv1alpha1.DBaaSProvider{})
 			// Create a fake client with the objects
 			client := fake.NewClientBuilder().WithRuntimeObjects(d, clusterrole).WithScheme(s).Build()
 			// Create a fake clientset
@@ -137,7 +137,7 @@ func TestDBaaSProviderCreate(t *testing.T) {
 				return
 			}
 			// Check the dbaasprovider CR has been created
-			instance := &dbaasoperator.DBaaSProvider{}
+			instance := &dbaasv1alpha1.DBaaSProvider{}
 			err = r.Client.Get(context.Background(), types.NamespacedName{Name: resourceName}, instance)
 			assert.NoError(t, err)
 		})

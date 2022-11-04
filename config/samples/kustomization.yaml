@@ -10,4 +10,6 @@ resources:
   - dbaas_v1alpha1_atlasconnection.yaml
   - dbaas_v1alpha1_atlasinventory.yaml
   - dbaas_v1alpha1_atlasinstance.yaml
+  - dbaas_v1alpha2_atlasconnection.yaml
+  - dbaas_v1alpha2_atlasinventory.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

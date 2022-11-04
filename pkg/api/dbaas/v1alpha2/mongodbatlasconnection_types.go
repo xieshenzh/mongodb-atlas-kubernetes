@@ -11,61 +11,61 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package dbaas
+package v1alpha2
 
 import (
+	dbaasv1alpha2 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 )
+
+// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +groupName:=dbaas.redhat.com
-// +versionName:=v1alpha1
+// +versionName:=v1alpha2
+// +kubebuilder:storageversion
 
-// MongoDBAtlasInstance is the Schema for the MongoDBAtlasInstance API
-type MongoDBAtlasInstance struct {
+// MongoDBAtlasConnection is the Schema for the MongoDBAtlasConnections API
+type MongoDBAtlasConnection struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   dbaasv1alpha1.DBaaSInstanceSpec   `json:"spec,omitempty"`
-	Status dbaasv1alpha1.DBaaSInstanceStatus `json:"status,omitempty"`
+	Spec   dbaasv1alpha2.DBaaSConnectionSpec   `json:"spec,omitempty"`
+	Status dbaasv1alpha2.DBaaSConnectionStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// MongoDBAtlasInstanceList contains a list of DBaaSInstances
-type MongoDBAtlasInstanceList struct {
+// MongoDBAtlasConnectionList contains a list of MongoDBAtlasConnection
+type MongoDBAtlasConnectionList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MongoDBAtlasInstance `json:"items"`
+	Items           []MongoDBAtlasConnection `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&MongoDBAtlasInstance{}, &MongoDBAtlasInstanceList{})
+	SchemeBuilder.Register(&MongoDBAtlasConnection{}, &MongoDBAtlasConnectionList{})
 }
 
-// +k8s:deepcopy-gen=false
-
-// SetInstanceCondition sets a condition on the status object. If the condition already
+// SetConnectionCondition sets a condition on the status object. If the condition already
 // exists, it will be replaced. SetCondition does not update the resource in
 // the cluster.
-func SetInstanceCondition(inv *MongoDBAtlasInstance, condType string, status metav1.ConditionStatus, reason, msg string) {
+func SetConnectionCondition(conn *MongoDBAtlasConnection, condType string, status metav1.ConditionStatus, reason, msg string) {
 	now := metav1.Now()
-	for i := range inv.Status.Conditions {
-		if inv.Status.Conditions[i].Type == condType {
+	for i := range conn.Status.Conditions {
+		if conn.Status.Conditions[i].Type == condType {
 			var lastTransitionTime metav1.Time
-			if inv.Status.Conditions[i].Status != status {
+			if conn.Status.Conditions[i].Status != status {
 				lastTransitionTime = now
 			} else {
-				lastTransitionTime = inv.Status.Conditions[i].LastTransitionTime
+				lastTransitionTime = conn.Status.Conditions[i].LastTransitionTime
 			}
-			inv.Status.Conditions[i] = metav1.Condition{
+			conn.Status.Conditions[i] = metav1.Condition{
 				LastTransitionTime: lastTransitionTime,
-				Status:             status,
 				Type:               condType,
+				Status:             status,
 				Reason:             reason,
 				Message:            msg,
 			}
@@ -75,7 +75,7 @@ func SetInstanceCondition(inv *MongoDBAtlasInstance, condType string, status met
 
 	// If the condition does not exist,
 	// initialize the lastTransitionTime
-	inv.Status.Conditions = append(inv.Status.Conditions, metav1.Condition{
+	conn.Status.Conditions = append(conn.Status.Conditions, metav1.Condition{
 		LastTransitionTime: now,
 		Type:               condType,
 		Status:             status,
@@ -84,12 +84,12 @@ func SetInstanceCondition(inv *MongoDBAtlasInstance, condType string, status met
 	})
 }
 
-// GetInstanceCondition return the condition with the passed condition type from
+// GetConnectionCondition return the condition with the passed condition type from
 // the status object. If the condition is not already present, return nil
-func GetInstanceCondition(inv *MongoDBAtlasInstance, condType string) *metav1.Condition {
-	for i := range inv.Status.Conditions {
-		if inv.Status.Conditions[i].Type == condType {
-			return &inv.Status.Conditions[i]
+func GetConnectionCondition(conn *MongoDBAtlasConnection, condType string) *metav1.Condition {
+	for i := range conn.Status.Conditions {
+		if conn.Status.Conditions[i].Type == condType {
+			return &conn.Status.Conditions[i]
 		}
 	}
 	return nil

@@ -36,10 +36,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	"go.mongodb.org/atlas/mongodbatlas"
 
-	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
+	dbaasv1alpha2 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha2"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha1"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha2"
 	mdbv1 "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/watch"
 )
@@ -114,7 +115,7 @@ func TestDiscoverInstancesNominal(t *testing.T) {
 
 	instances, res := discoverInstances(client)
 	assert.True(t, res.IsOk())
-	instancesExpected := []dbaasv1alpha1.Instance{}
+	instancesExpected := []dbaasv1alpha2.DatabaseService{}
 	dataExpected, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
 	assert.NoError(t, err)
 	err = json.Unmarshal(dataExpected, &instancesExpected)
@@ -141,7 +142,8 @@ func TestAtlasInventoryReconcile(t *testing.T) {
 	s := scheme.Scheme
 	utilruntime.Must(scheme.AddToScheme(s))
 	utilruntime.Must(mdbv1.AddToScheme(s))
-	utilruntime.Must(dbaas.AddToScheme(s))
+	utilruntime.Must(v1alpha1.AddToScheme(s))
+	utilruntime.Must(v1alpha2.AddToScheme(s))
 
 	client := fake.NewClientBuilder().WithScheme(s).Build()
 
@@ -204,17 +206,17 @@ func TestAtlasInventoryReconcile(t *testing.T) {
 	}
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			inventory := &dbaas.MongoDBAtlasInventory{
+			inventory := &v1alpha2.MongoDBAtlasInventory{
 				TypeMeta: metav1.TypeMeta{
-					APIVersion: "dbaas.redhat.com/v1alpha1",
+					APIVersion: "dbaas.redhat.com/v1alpha2",
 					Kind:       "MongoDBAtlasInventory",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("inventory-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSInventorySpec{
-					CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+				Spec: dbaasv1alpha2.DBaaSInventorySpec{
+					CredentialsRef: &dbaasv1alpha2.LocalObjectReference{
 						Name: fmt.Sprintf("secret-%s", tcName),
 					},
 				},
@@ -268,7 +270,7 @@ func TestAtlasInventoryReconcile(t *testing.T) {
 				// No further checking is needed
 				return
 			}
-			inventoryUpdated := &dbaas.MongoDBAtlasInventory{}
+			inventoryUpdated := &v1alpha2.MongoDBAtlasInventory{}
 			err = client.Get(context.Background(),
 				types.NamespacedName{
 					Name:      inventory.Name,
@@ -286,12 +288,12 @@ func TestAtlasInventoryReconcile(t *testing.T) {
 				// Move on to next test case
 				return
 			}
-			instancesExpected := []dbaasv1alpha1.Instance{}
+			instancesExpected := []dbaasv1alpha2.DatabaseService{}
 			dataExpected, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
 			assert.NoError(t, err)
 			err = json.Unmarshal(dataExpected, &instancesExpected)
 			assert.NoError(t, err)
-			assert.True(t, reflect.DeepEqual(instancesExpected, inventoryUpdated.Status.Instances))
+			assert.True(t, reflect.DeepEqual(instancesExpected, inventoryUpdated.Status.DatabaseServices))
 		})
 	}
 }

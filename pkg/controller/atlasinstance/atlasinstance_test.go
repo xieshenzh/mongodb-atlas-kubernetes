@@ -25,8 +25,11 @@ import (
 	"testing"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1alpha2 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha2"
 	"github.com/fgrosse/zaptest"
 	"github.com/gorilla/mux"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha1"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha2"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/atlas/mongodbatlas"
 	corev1 "k8s.io/api/core/v1"
@@ -38,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	dbaas "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
 	v1 "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1/common"
 	status "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1/status"
@@ -128,7 +130,7 @@ func TestGetInstanceData(t *testing.T) {
 
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			instance := &dbaas.MongoDBAtlasInstance{
+			instance := &v1alpha1.MongoDBAtlasInstance{
 				TypeMeta: metav1.TypeMeta{
 					APIVersion: "dbaas.redhat.com/v1alpha1",
 					Kind:       "MongoDBAtlasInstance",
@@ -330,7 +332,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 					},
 				},
 			}
-			inst := &dbaas.MongoDBAtlasInstance{
+			inst := &v1alpha1.MongoDBAtlasInstance{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-instance",
 					Namespace: namespace,
@@ -348,7 +350,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 			}
 			stateChangedInAtlas, result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, tc.projectName)
 			if len(tc.expErrMsg) == 0 {
-				cond := dbaas.GetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType)
+				cond := v1alpha1.GetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType)
 				assert.NotNil(t, cond)
 				assert.True(t, result.IsOk())
 				assert.Equal(t, inst.Status.Phase, tc.expPhase)
@@ -368,7 +370,8 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	s := scheme.Scheme
 	utilruntime.Must(scheme.AddToScheme(s))
 	utilruntime.Must(v1.AddToScheme(s))
-	utilruntime.Must(dbaas.AddToScheme(s))
+	utilruntime.Must(v1alpha1.AddToScheme(s))
+	utilruntime.Must(v1alpha2.AddToScheme(s))
 	client := fake.NewClientBuilder().WithScheme(s).Build()
 	logger := zaptest.Logger(t)
 
@@ -387,17 +390,17 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	expectedPhase := dbaasv1alpha1.InstancePhasePending
 	expectedErrString := "CLUSTER_NOT_FOUND"
 	expectedRequeue := true
-	inventory := &dbaas.MongoDBAtlasInventory{
+	inventory := &v1alpha2.MongoDBAtlasInventory{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "dbaas.redhat.com/v1alpha1",
+			APIVersion: "dbaas.redhat.com/v1alpha2",
 			Kind:       "MongoDBAtlasInventory",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      fmt.Sprintf("inventory-%s", tcName),
 			Namespace: "dbaas-operator",
 		},
-		Spec: dbaasv1alpha1.DBaaSInventorySpec{
-			CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+		Spec: dbaasv1alpha2.DBaaSInventorySpec{
+			CredentialsRef: &dbaasv1alpha2.LocalObjectReference{
 				Name: fmt.Sprintf("secret-%s", tcName),
 			},
 		},
@@ -420,7 +423,7 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 		},
 	}
 
-	instance := &dbaas.MongoDBAtlasInstance{
+	instance := &v1alpha1.MongoDBAtlasInstance{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "dbaas.redhat.com/v1alpha1",
 			Kind:       "MongoDBAtlasInstance",
@@ -461,7 +464,7 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	} else {
 		assert.Equal(t, expectedRequeue, res.Requeue)
 	}
-	instanceUpdated := &dbaas.MongoDBAtlasInstance{}
+	instanceUpdated := &v1alpha1.MongoDBAtlasInstance{}
 	err = client.Get(context.Background(),
 		types.NamespacedName{
 			Name:      instance.Name,

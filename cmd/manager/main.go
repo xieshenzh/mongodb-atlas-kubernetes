@@ -45,8 +45,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1alpha2 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha2"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha1"
+	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas/v1alpha2"
 
-	dbaas "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
 	mdbv1 "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/atlas"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/atlasconnection"
@@ -75,9 +77,11 @@ func init() {
 
 	utilruntime.Must(mdbv1.AddToScheme(scheme))
 
-	utilruntime.Must(dbaas.AddToScheme(scheme))
+	utilruntime.Must(v1alpha1.AddToScheme(scheme))
+	utilruntime.Must(v1alpha2.AddToScheme(scheme))
 
 	utilruntime.Must(dbaasv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(dbaasv1alpha2.AddToScheme(scheme))
 
 	// +kubebuilder:scaffold:scheme
 
@@ -238,6 +242,25 @@ func main() {
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "AtlasDatabaseUser")
 		os.Exit(1)
+	}
+
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = (&v1alpha1.MongoDBAtlasInventory{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CrdbDBaaSInventory")
+			os.Exit(1)
+		}
+		if err = (&v1alpha1.MongoDBAtlasConnection{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CrdbDBaaSConnection")
+			os.Exit(1)
+		}
+		if err = (&v1alpha2.MongoDBAtlasInventory{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CrdbDBaaSInventory")
+			os.Exit(1)
+		}
+		if err = (&v1alpha2.MongoDBAtlasConnection{}).SetupWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "CrdbDBaaSConnection")
+			os.Exit(1)
+		}
 	}
 	// +kubebuilder:scaffold:builder
 

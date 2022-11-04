@@ -19,6 +19,8 @@ patchesStrategicMerge:
 #- patches/webhook_in_atlasprojects.yaml
 #- patches/webhook_in_atlasbackuppolicies.yaml
 #- patches/webhook_in_atlasbackupschedules.yaml
+- patches/webhook_in_mongodbatlasinventories.yaml
+- patches/webhook_in_mongodbatlasconnections.yaml
 # +kubebuilder:scaffold:crdkustomizewebhookpatch
 
 # [CERTMANAGER] To enable webhook, uncomment all the sections with [CERTMANAGER] prefix.
