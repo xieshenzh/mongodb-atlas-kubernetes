@@ -159,7 +159,7 @@ metadata:
     description: The MongoDB Atlas Kubernetes Operator enables easy management of
       Clusters in MongoDB Atlas
     olm.skipRange: '>=0.2.0 <0.3.0'
-    operators.operatorframework.io/builder: operator-sdk-v1.19.0+git
+    operators.operatorframework.io/builder: operator-sdk-v1.25.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: mongodb-atlas-kubernetes.v0.3.0
   namespace: placeholder

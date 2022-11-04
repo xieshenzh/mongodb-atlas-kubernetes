@@ -114,7 +114,7 @@ func TestDiscoverInstancesNominal(t *testing.T) {
 
 	instances, res := discoverInstances(client)
 	assert.True(t, res.IsOk())
-	instancesExpected := []dbaasv1alpha1.Instance{}
+	instancesExpected := []dbaasv1alpha1.DatabaseService{}
 	dataExpected, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
 	assert.NoError(t, err)
 	err = json.Unmarshal(dataExpected, &instancesExpected)
@@ -286,12 +286,12 @@ func TestAtlasInventoryReconcile(t *testing.T) {
 				// Move on to next test case
 				return
 			}
-			instancesExpected := []dbaasv1alpha1.Instance{}
+			instancesExpected := []dbaasv1alpha1.DatabaseService{}
 			dataExpected, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
 			assert.NoError(t, err)
 			err = json.Unmarshal(dataExpected, &instancesExpected)
 			assert.NoError(t, err)
-			assert.True(t, reflect.DeepEqual(instancesExpected, inventoryUpdated.Status.Instances))
+			assert.True(t, reflect.DeepEqual(instancesExpected, inventoryUpdated.Status.DatabaseServices))
 		})
 	}
 }

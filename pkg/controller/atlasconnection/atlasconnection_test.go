@@ -262,7 +262,7 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			instances := []dbaasv1alpha1.Instance{}
+			instances := []dbaasv1alpha1.DatabaseService{}
 			if len(tc.instancesPath) > 0 {
 				data, err := ioutil.ReadFile(tc.instancesPath)
 				assert.NoError(t, err)
@@ -307,7 +307,7 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 							Type:               dbaasv1alpha1.DBaaSInventoryProviderSyncType,
 						},
 					},
-					Instances: instances,
+					DatabaseServices: instances,
 				},
 			}
 
@@ -325,7 +325,8 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
-					InstanceID: tc.instanceID,
+					DatabaseServiceID:   tc.instanceID,
+					DatabaseServiceType: dbaasv1alpha1.InstanceDatabaseService,
 				},
 			}
 			objs := []runtime.Object{secret}
@@ -456,7 +457,7 @@ func TestDBUserDelete(t *testing.T) {
 
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			instances := []dbaasv1alpha1.Instance{}
+			instances := []dbaasv1alpha1.DatabaseService{}
 			if len(tc.instancesPath) > 0 {
 				data, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
 				assert.NoError(t, err)
@@ -501,7 +502,7 @@ func TestDBUserDelete(t *testing.T) {
 							Type:               dbaasv1alpha1.DBaaSInventoryProviderSyncType,
 						},
 					},
-					Instances: instances,
+					DatabaseServices: instances,
 				},
 			}
 			connection := &dbaas.MongoDBAtlasConnection{
@@ -518,7 +519,8 @@ func TestDBUserDelete(t *testing.T) {
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
-					InstanceID: tc.instanceID,
+					DatabaseServiceID:   tc.instanceID,
+					DatabaseServiceType: dbaasv1alpha1.InstanceDatabaseService,
 				},
 			}
 			objs := []runtime.Object{secret, connection}

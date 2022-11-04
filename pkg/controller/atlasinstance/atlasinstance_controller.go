@@ -488,10 +488,10 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 	instInfo, result := atlasinventory.GetClusterInfo(atlasClient, project, inst.Spec.Name)
 	if result.IsOk() {
 		// Stores the phase info in inst.Status.Phase and remove from instInfo.InstanceInf map
-		inst.Status.Phase = dbaasv1alpha1.DBaasInstancePhase(instInfo.InstanceInfo[dbaas.ProvisionPhaseKey])
-		delete(instInfo.InstanceInfo, dbaas.ProvisionPhaseKey)
-		inst.Status.InstanceID = instInfo.InstanceID
-		inst.Status.InstanceInfo = instInfo.InstanceInfo
+		inst.Status.Phase = dbaasv1alpha1.DBaasInstancePhase(instInfo.ServiceInfo[dbaas.ProvisionPhaseKey])
+		delete(instInfo.ServiceInfo, dbaas.ProvisionPhaseKey)
+		inst.Status.InstanceID = instInfo.ServiceID
+		inst.Status.InstanceInfo = instInfo.ServiceInfo
 	} else {
 		inst.Status.Phase = dbaasv1alpha1.InstancePhasePending
 		inst.Status.InstanceID = ""

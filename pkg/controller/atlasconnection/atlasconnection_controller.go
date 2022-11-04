@@ -139,7 +139,7 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 	}
 
 	// Retrieve the instance from inventory based on instanceID
-	instance := getInstance(inventory, conn.Spec.InstanceID)
+	instance := getInstance(inventory, conn.Spec.DatabaseServiceID)
 	if instance == nil {
 		result := workflow.Terminate(workflow.MongoDBAtlasConnectionInstanceIDNotFound, "Atlas database instance not found")
 		dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
@@ -147,10 +147,10 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 		return result.ReconcileResult(), nil
 	}
 
-	projectID := instance.InstanceInfo[dbaas.ProjectIDKey]
+	projectID := instance.ServiceInfo[dbaas.ProjectIDKey]
 
 	if conn.Status.ConnectionInfoRef == nil {
-		srvString := instance.InstanceInfo[dbaas.ConnectionStringsStandardSrvKey]
+		srvString := instance.ServiceInfo[dbaas.ConnectionStringsStandardSrvKey]
 		if len(srvString) == 0 {
 			log.Info("Instance connection strings are empty. Will retry.")
 			result := workflow.Terminate(workflow.MongoDBAtlasInstanceNotReady, "Atlas database instance not ready")
@@ -184,7 +184,7 @@ func (r *MongoDBAtlasConnectionReconciler) Reconcile(cx context.Context, req ctr
 		secretCreated, err := r.Clientset.CoreV1().Secrets(req.Namespace).Create(context.Background(), secret, metav1.CreateOptions{})
 		if err != nil {
 			// Clean up the db user in atlas that was just created
-			_ = r.deleteDBUserFromAtlas(instance.InstanceInfo[dbaas.ProjectIDKey], dbUserName, inventory, log)
+			_ = r.deleteDBUserFromAtlas(instance.ServiceInfo[dbaas.ProjectIDKey], dbUserName, inventory, log)
 			result := workflow.Terminate(workflow.MongoDBAtlasConnectionBackendError, err.Error())
 			dbaas.SetConnectionCondition(conn, dbaasv1alpha1.DBaaSConnectionProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return ctrl.Result{}, fmt.Errorf("failed to create secret:%w", err)
@@ -274,14 +274,14 @@ func (r *MongoDBAtlasConnectionReconciler) deleteDBUser(conn *dbaas.MongoDBAtlas
 	}
 
 	// Retrieve the instance from inventory based on instanceID
-	instance := getInstance(inventory, conn.Spec.InstanceID)
+	instance := getInstance(inventory, conn.Spec.DatabaseServiceID)
 	if instance == nil {
 		log.Infow("No instance found in the inventory. Deletion done.")
 		return nil
 	}
 
 	// Get the projectID from the status
-	projectID, ok := instance.InstanceInfo[dbaas.ProjectIDKey]
+	projectID, ok := instance.ServiceInfo[dbaas.ProjectIDKey]
 	if !ok {
 		log.Infow("No projectID found. Deletion done.")
 		return nil
@@ -462,11 +462,13 @@ func isInventoryReady(inventory *dbaas.MongoDBAtlasInventory) bool {
 }
 
 // getInstance returns an instance from the inventory based on instanceID
-func getInstance(inventory *dbaas.MongoDBAtlasInventory, instanceID string) *dbaasv1alpha1.Instance {
-	for _, instance := range inventory.Status.Instances {
-		if instance.InstanceID == instanceID {
-			// Found the instance based on its ID
-			return &instance
+func getInstance(inventory *dbaas.MongoDBAtlasInventory, instanceID string) *dbaasv1alpha1.DatabaseService {
+	for _, databaseService := range inventory.Status.DatabaseServices {
+		if databaseService.ServiceType == dbaasv1alpha1.InstanceDatabaseService {
+			if databaseService.ServiceID == instanceID {
+				// Found the instance based on its ID
+				return &databaseService
+			}
 		}
 	}
 	return nil
