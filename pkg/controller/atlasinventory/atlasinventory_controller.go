@@ -128,15 +128,6 @@ func (r *MongoDBAtlasInventoryReconciler) Reconcile(ctx context.Context, req ctr
 	// Update the status
 	dbaas.SetInventoryCondition(inventory, dbaasv1alpha1.DBaaSInventoryProviderSyncType, metav1.ConditionTrue, string(workflow.MongoDBAtlasInventorySyncOK), "Spec sync OK")
 	inventory.Status.DatabaseServices = inventoryList
-	var instances []dbaasv1alpha1.Instance
-	for _, instance := range inventoryList {
-		instances = append(instances, dbaasv1alpha1.Instance{
-			InstanceID:   instance.ServiceID,
-			Name:         instance.ServiceName,
-			InstanceInfo: instance.ServiceInfo,
-		})
-	}
-	inventory.Status.Instances = instances
 	return ctrl.Result{}, nil
 }
 

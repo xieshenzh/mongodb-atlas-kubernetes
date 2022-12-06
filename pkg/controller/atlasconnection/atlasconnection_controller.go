@@ -44,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 	"go.mongodb.org/atlas/mongodbatlas"
 
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
@@ -462,13 +463,11 @@ func isInventoryReady(inventory *dbaas.MongoDBAtlasInventory) bool {
 }
 
 // getInstance returns an instance from the inventory based on instanceID
-func getInstance(inventory *dbaas.MongoDBAtlasInventory, instanceID string) *dbaasv1alpha1.DatabaseService {
+func getInstance(inventory *dbaas.MongoDBAtlasInventory, instanceID string) *dbaasv1beta1.DatabaseService {
 	for _, databaseService := range inventory.Status.DatabaseServices {
-		if databaseService.ServiceType == dbaasv1alpha1.InstanceDatabaseService {
-			if databaseService.ServiceID == instanceID {
-				// Found the instance based on its ID
-				return &databaseService
-			}
+		if databaseService.ServiceID == instanceID {
+			// Found the instance based on its ID
+			return &databaseService
 		}
 	}
 	return nil

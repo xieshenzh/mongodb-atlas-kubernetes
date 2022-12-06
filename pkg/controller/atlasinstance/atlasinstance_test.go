@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 	"github.com/fgrosse/zaptest"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -396,8 +397,8 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 			Name:      fmt.Sprintf("inventory-%s", tcName),
 			Namespace: "dbaas-operator",
 		},
-		Spec: dbaasv1alpha1.DBaaSInventorySpec{
-			CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+		Spec: dbaasv1beta1.DBaaSInventorySpec{
+			CredentialsRef: &dbaasv1beta1.LocalObjectReference{
 				Name: fmt.Sprintf("secret-%s", tcName),
 			},
 		},

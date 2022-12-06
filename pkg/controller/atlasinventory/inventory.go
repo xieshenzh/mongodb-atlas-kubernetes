@@ -11,20 +11,21 @@ import (
 	"go.mongodb.org/atlas/mongodbatlas"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/controller/workflow"
 )
 
 // discoverInstances query atlas and return list of instances found
-func discoverInstances(atlasClient *mongodbatlas.Client) ([]dbaasv1alpha1.DatabaseService, workflow.Result) {
+func discoverInstances(atlasClient *mongodbatlas.Client) ([]dbaasv1beta1.DatabaseService, workflow.Result) {
 	// Try to find the service
 	projects, response, err := atlasClient.Projects.GetAllProjects(context.Background(), &mongodbatlas.ListOptions{})
 	if err != nil {
 		return nil, workflow.Terminate(getReasonFromResponse(response), err.Error())
 	}
 	processed := map[string]bool{}
-	instanceList := []dbaasv1alpha1.DatabaseService{}
+	instanceList := []dbaasv1beta1.DatabaseService{}
 	for _, p := range projects.Results {
 		if _, ok := processed[p.ID]; ok {
 			// This project ID has been processed. Move on to next.
@@ -56,7 +57,7 @@ func getReasonFromResponse(response *mongodbatlas.Response) workflow.ConditionRe
 }
 
 // GetClusterInfo query atlas for the cluster and return the relevant data required by DBaaS Operator
-func GetClusterInfo(atlasClient *mongodbatlas.Client, projectName, clusterName string) (*dbaasv1alpha1.DatabaseService, workflow.Result) {
+func GetClusterInfo(atlasClient *mongodbatlas.Client, projectName, clusterName string) (*dbaasv1beta1.DatabaseService, workflow.Result) {
 	// Try to find the service
 	project, response, err := atlasClient.Projects.GetOneProjectByName(context.Background(), projectName)
 	if err != nil {
@@ -71,7 +72,7 @@ func GetClusterInfo(atlasClient *mongodbatlas.Client, projectName, clusterName s
 }
 
 // GetInstance returns instance info as required by DBaaS Operator
-func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dbaasv1alpha1.DatabaseService {
+func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dbaasv1beta1.DatabaseService {
 	// Convert state names to "Creating", "Ready", "Deleting", "Deleted" etc.
 	// Pending - provisioning not yet started
 	// Creating - provisioning in progress
@@ -85,10 +86,9 @@ func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dba
 	if len(provider) == 0 {
 		provider = cluster.ProviderSettings.ProviderName
 	}
-	return dbaasv1alpha1.DatabaseService{
+	return dbaasv1beta1.DatabaseService{
 		ServiceID:   cluster.ID,
 		ServiceName: cluster.Name,
-		ServiceType: dbaasv1alpha1.InstanceDatabaseService,
 		ServiceInfo: map[string]string{
 			dbaas.InstanceSizeNameKey:             cluster.ProviderSettings.InstanceSizeName,
 			dbaas.CloudProviderKey:                provider,

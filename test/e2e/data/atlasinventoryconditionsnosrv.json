@@ -2,7 +2,6 @@
     {
       "serviceID":"70b7a72f4877d05880cNoSrv",
       "serviceName":"testb",
-      "serviceType": "instance",
       "serviceInfo":{
          "instanceSizeName":"M10",
          "state":"Creating",

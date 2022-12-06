@@ -1462,8 +1462,8 @@ github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415/go.mod h1:
 github.com/xeipuuv/gojsonschema v0.0.0-20180618132009-1d523034197f/go.mod h1:5yf86TLmAcydyeJq5YvxkGPE2fm/u4myDekKRoLuqhs=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
-github.com/xieshenzh/dbaas-operator v1.0.1-0.20221121204210-9334898ddc99 h1:ZtT9v8ug92FqPUGAFLKsVf6CRC0+yvN486ifN/c4ivU=
-github.com/xieshenzh/dbaas-operator v1.0.1-0.20221121204210-9334898ddc99/go.mod h1:BUJHDidyvsuU4vimkog/ItxsLSR87ASQW2d2xe3t2t4=
+github.com/xieshenzh/dbaas-operator v1.0.1-0.20221205213753-d3f05ce9f03b h1:IwzQJ5YH/uDsiqtA4WfKWrtQFwwgZguK0ysR0FIhB0Y=
+github.com/xieshenzh/dbaas-operator v1.0.1-0.20221205213753-d3f05ce9f03b/go.mod h1:BUJHDidyvsuU4vimkog/ItxsLSR87ASQW2d2xe3t2t4=
 github.com/xlab/treeprint v0.0.0-20180616005107-d6fb6747feb6/go.mod h1:ce1O1j6UtZfjr22oyGxGLbauSBp2YVXpARAosm7dHBg=
 github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca/go.mod h1:ce1O1j6UtZfjr22oyGxGLbauSBp2YVXpARAosm7dHBg=
 github.com/xlab/treeprint v1.1.0/go.mod h1:gj5Gd3gPdKtR1ikdDK6fnFLdmIS0X30kTTuNd/WEJu0=

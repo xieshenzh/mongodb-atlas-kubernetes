@@ -44,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 	"go.mongodb.org/atlas/mongodbatlas"
 
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
@@ -262,7 +263,7 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			instances := []dbaasv1alpha1.DatabaseService{}
+			instances := []dbaasv1beta1.DatabaseService{}
 			if len(tc.instancesPath) > 0 {
 				data, err := ioutil.ReadFile(tc.instancesPath)
 				assert.NoError(t, err)
@@ -293,12 +294,12 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 					Name:      fmt.Sprintf("inventory-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSInventorySpec{
-					CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+				Spec: dbaasv1beta1.DBaaSInventorySpec{
+					CredentialsRef: &dbaasv1beta1.LocalObjectReference{
 						Name: fmt.Sprintf("secret-%s", tcName),
 					},
 				},
-				Status: dbaasv1alpha1.DBaaSInventoryStatus{
+				Status: dbaasv1beta1.DBaaSInventoryStatus{
 					Conditions: []metav1.Condition{
 						{
 							LastTransitionTime: metav1.Now(),
@@ -320,13 +321,12 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 					Name:      fmt.Sprintf("connection-%s", tcName),
 					Namespace: "myproject",
 				},
-				Spec: dbaasv1alpha1.DBaaSConnectionSpec{
-					InventoryRef: dbaasv1alpha1.NamespacedName{
+				Spec: dbaasv1beta1.DBaaSConnectionSpec{
+					InventoryRef: dbaasv1beta1.NamespacedName{
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
-					DatabaseServiceID:   tc.instanceID,
-					DatabaseServiceType: dbaasv1alpha1.InstanceDatabaseService,
+					DatabaseServiceID: tc.instanceID,
 				},
 			}
 			objs := []runtime.Object{secret}
@@ -457,7 +457,7 @@ func TestDBUserDelete(t *testing.T) {
 
 	for tcName, tc := range testCase {
 		t.Run(tcName, func(t *testing.T) {
-			instances := []dbaasv1alpha1.DatabaseService{}
+			instances := []dbaasv1beta1.DatabaseService{}
 			if len(tc.instancesPath) > 0 {
 				data, err := ioutil.ReadFile("../../../test/e2e/data/atlasinventoryexpected.json")
 				assert.NoError(t, err)
@@ -488,12 +488,12 @@ func TestDBUserDelete(t *testing.T) {
 					Name:      fmt.Sprintf("inventory-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSInventorySpec{
-					CredentialsRef: &dbaasv1alpha1.LocalObjectReference{
+				Spec: dbaasv1beta1.DBaaSInventorySpec{
+					CredentialsRef: &dbaasv1beta1.LocalObjectReference{
 						Name: fmt.Sprintf("secret-%s", tcName),
 					},
 				},
-				Status: dbaasv1alpha1.DBaaSInventoryStatus{
+				Status: dbaasv1beta1.DBaaSInventoryStatus{
 					Conditions: []metav1.Condition{
 						{
 							LastTransitionTime: metav1.Now(),
@@ -514,13 +514,12 @@ func TestDBUserDelete(t *testing.T) {
 					Name:      fmt.Sprintf("connection-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSConnectionSpec{
-					InventoryRef: dbaasv1alpha1.NamespacedName{
+				Spec: dbaasv1beta1.DBaaSConnectionSpec{
+					InventoryRef: dbaasv1beta1.NamespacedName{
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
-					DatabaseServiceID:   tc.instanceID,
-					DatabaseServiceType: dbaasv1alpha1.InstanceDatabaseService,
+					DatabaseServiceID: tc.instanceID,
 				},
 			}
 			objs := []runtime.Object{secret, connection}
