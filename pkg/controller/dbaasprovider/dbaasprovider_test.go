@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	dbaasoperator "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasoperator "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 
 	dbaas "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
 	mdbv1 "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1"

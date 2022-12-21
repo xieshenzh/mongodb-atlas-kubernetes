@@ -10,7 +10,6 @@ import (
 
 	"go.mongodb.org/atlas/mongodbatlas"
 
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
@@ -101,21 +100,21 @@ func GetInstance(project mongodbatlas.Project, cluster mongodbatlas.Cluster) dba
 	}
 }
 
-func parsePhase(state string) dbaasv1alpha1.DBaasInstancePhase {
+func parsePhase(state string) dbaasv1beta1.DBaasInstancePhase {
 	switch state {
 	case "Pending":
-		return dbaasv1alpha1.InstancePhasePending
+		return dbaasv1beta1.InstancePhasePending
 	case "Creating":
-		return dbaasv1alpha1.InstancePhaseCreating
+		return dbaasv1beta1.InstancePhaseCreating
 	case "Updating":
-		return dbaasv1alpha1.InstancePhaseUpdating
+		return dbaasv1beta1.InstancePhaseUpdating
 	case "Deleting":
-		return dbaasv1alpha1.InstancePhaseDeleting
+		return dbaasv1beta1.InstancePhaseDeleting
 	case "Deleted":
-		return dbaasv1alpha1.InstancePhaseDeleted
+		return dbaasv1beta1.InstancePhaseDeleted
 	case "Ready", "Idle":
-		return dbaasv1alpha1.InstancePhaseReady
+		return dbaasv1beta1.InstancePhaseReady
 	default:
-		return dbaasv1alpha1.InstancePhaseUnknown
+		return dbaasv1beta1.InstancePhaseUnknown
 	}
 }

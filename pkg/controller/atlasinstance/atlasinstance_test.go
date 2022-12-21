@@ -24,8 +24,6 @@ import (
 	"reflect"
 	"testing"
 
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
-	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 	"github.com/fgrosse/zaptest"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -39,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 	dbaas "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
 	v1 "github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1"
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/v1/common"
@@ -138,8 +137,8 @@ func TestGetInstanceData(t *testing.T) {
 					Name:      fmt.Sprintf("instance-%s", tcName),
 					Namespace: "dbaas-operator",
 				},
-				Spec: dbaasv1alpha1.DBaaSInstanceSpec{
-					InventoryRef: dbaasv1alpha1.NamespacedName{
+				Spec: dbaasv1beta1.DBaaSInstanceSpec{
+					InventoryRef: dbaasv1beta1.NamespacedName{
 						Name:      fmt.Sprintf("inventory-%s", tcName),
 						Namespace: "dbaas-operator",
 					},
@@ -255,7 +254,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 		projectName            string
 		deploymentCRStatus     corev1.ConditionStatus
 		expErrMsg              string
-		expPhase               dbaasv1alpha1.DBaasInstancePhase
+		expPhase               dbaasv1beta1.DBaasInstancePhase
 		expStatus              string
 		expStateChangedInAtlas bool
 	}{
@@ -264,7 +263,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 			projectName:            "myproject",
 			deploymentCRStatus:     corev1.ConditionFalse,
 			expErrMsg:              "",
-			expPhase:               dbaasv1alpha1.InstancePhaseCreating,
+			expPhase:               dbaasv1beta1.InstancePhaseCreating,
 			expStatus:              "False",
 			expStateChangedInAtlas: false,
 		},
@@ -273,7 +272,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 			projectName:            "myproject",
 			deploymentCRStatus:     corev1.ConditionTrue,
 			expErrMsg:              "",
-			expPhase:               dbaasv1alpha1.InstancePhaseCreating,
+			expPhase:               dbaasv1beta1.InstancePhaseCreating,
 			expStatus:              "False",
 			expStateChangedInAtlas: true,
 		},
@@ -282,7 +281,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 			projectName:            "myproject",
 			deploymentCRStatus:     corev1.ConditionTrue,
 			expErrMsg:              "",
-			expPhase:               dbaasv1alpha1.InstancePhaseReady,
+			expPhase:               dbaasv1beta1.InstancePhaseReady,
 			expStatus:              "True",
 			expStateChangedInAtlas: false,
 		},
@@ -336,8 +335,8 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 					Name:      "my-instance",
 					Namespace: namespace,
 				},
-				Spec: dbaasv1alpha1.DBaaSInstanceSpec{
-					InventoryRef: dbaasv1alpha1.NamespacedName{
+				Spec: dbaasv1beta1.DBaaSInstanceSpec{
+					InventoryRef: dbaasv1beta1.NamespacedName{
 						Name:      "my-inventory",
 						Namespace: namespace,
 					},
@@ -349,7 +348,7 @@ func TestSetInstanceStatusWithDeploymentInfo(t *testing.T) {
 			}
 			stateChangedInAtlas, result := setInstanceStatusWithDeploymentInfo(atlasClient, inst, atlasDeployment, tc.projectName)
 			if len(tc.expErrMsg) == 0 {
-				cond := dbaas.GetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType)
+				cond := dbaas.GetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType)
 				assert.NotNil(t, cond)
 				assert.True(t, result.IsOk())
 				assert.Equal(t, inst.Status.Phase, tc.expPhase)
@@ -385,7 +384,7 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 	tcName := "mytest"
 	deploymentName := "mydeploymentnew"
 	projectName := "myproject"
-	expectedPhase := dbaasv1alpha1.InstancePhasePending
+	expectedPhase := dbaasv1beta1.InstancePhasePending
 	expectedErrString := "CLUSTER_NOT_FOUND"
 	expectedRequeue := true
 	inventory := &dbaas.MongoDBAtlasInventory{
@@ -430,9 +429,9 @@ func TestAtlasInstanceReconcile(t *testing.T) {
 			Name:      fmt.Sprintf("instance-%s", tcName),
 			Namespace: "dbaas-operator",
 		},
-		Spec: dbaasv1alpha1.DBaaSInstanceSpec{
+		Spec: dbaasv1beta1.DBaaSInstanceSpec{
 			Name: deploymentName,
-			InventoryRef: dbaasv1alpha1.NamespacedName{
+			InventoryRef: dbaasv1beta1.NamespacedName{
 				Name:      inventory.Name,
 				Namespace: inventory.Namespace,
 			},

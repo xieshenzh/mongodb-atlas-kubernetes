@@ -42,7 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
+	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 	"go.mongodb.org/atlas/mongodbatlas"
 
 	"github.com/mongodb/mongodb-atlas-kubernetes/pkg/api/dbaas"
@@ -139,7 +139,7 @@ func (r *MongoDBAtlasInstanceReconciler) Reconcile(cx context.Context, req ctrl.
 			// The corresponding inventory is not found, no reqeue.
 			log.Info("MongoDBAtlasInventory resource not found, has been deleted")
 			result := workflow.InProgress(workflow.MongoDBAtlasInstanceInventoryNotFound, "inventory not found")
-			dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Error fetching MongoDBAtlasInventory")
@@ -160,12 +160,12 @@ func (r *MongoDBAtlasInstanceReconciler) Reconcile(cx context.Context, req ctrl.
 	if atlasProjectCond == nil || atlasProjectCond.Type == status.IPAccessListReadyType { // AtlasProject reconciliation still on going
 		log.Infof("Atlas Project for instance:%v/%v is not ready. Requeue to retry.", inst.Namespace, inst.Name)
 		// Set phase to Pending
-		inst.Status.Phase = dbaasv1alpha1.InstancePhasePending
+		inst.Status.Phase = dbaasv1beta1.InstancePhasePending
 		// Requeue to try again
 		return ctrl.Result{Requeue: true}, nil
 	}
 	if atlasProjectCond.Status == corev1.ConditionFalse { // AtlasProject reconciliation failed
-		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, atlasProjectCond.Reason, atlasProjectCond.Message)
+		dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, atlasProjectCond.Reason, atlasProjectCond.Message)
 		// Do not requeue
 		return ctrl.Result{}, nil
 	}
@@ -180,7 +180,7 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasDeployment(cx context.Con
 	atlasConn, err := atlas.ReadConnection(log, r.Client, r.GlobalAPISecret, inventory.ConnectionSecretObjectKey())
 	if err != nil {
 		result := workflow.Terminate(workflow.MongoDBAtlasInventoryInputError, err.Error())
-		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+		dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 		return result.ReconcileResult(), nil
 	}
 	atlasClient := r.AtlasClient
@@ -188,7 +188,7 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasDeployment(cx context.Con
 		cl, err := atlas.Client(r.AtlasDomain, atlasConn, log)
 		if err != nil {
 			result := workflow.Terminate(workflow.MongoDBAtlasInventoryInputError, err.Error())
-			dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return result.ReconcileResult(), nil
 		}
 		atlasClient = &cl
@@ -199,12 +199,12 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasDeployment(cx context.Con
 		if apiErrors.IsNotFound(err) { // The AtlasDeployment CR does not exist
 			// If the instance has been previously associated with an AtlasCluster CR, its phase is not in pending status (ie, is in creating, updating or ready)
 			// This allows the operator to migrate from a previous AtlasCluster CR to an AtlasDeployment CR
-			if len(inst.Status.Phase) == 0 || inst.Status.Phase == dbaasv1alpha1.InstancePhasePending || inst.Status.Phase == dbaasv1alpha1.InstancePhaseUnknown {
+			if len(inst.Status.Phase) == 0 || inst.Status.Phase == dbaasv1beta1.InstancePhasePending || inst.Status.Phase == dbaasv1beta1.InstancePhaseUnknown {
 				_, result := atlasinventory.GetClusterInfo(atlasClient, atlasProject.Spec.Name, inst.Spec.Name)
 				if result.IsOk() {
 					// The cluster already exists in Atlas. Mark provisioning phase as failed and return
-					inst.Status.Phase = dbaasv1alpha1.InstancePhaseFailed
-					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, ClusterAlreadyExistsInAtlas, ClusterAlreadyExistsInAtlasMsg)
+					inst.Status.Phase = dbaasv1beta1.InstancePhaseFailed
+					dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, ClusterAlreadyExistsInAtlas, ClusterAlreadyExistsInAtlasMsg)
 					// No requeue
 					return ctrl.Result{}, nil
 				}
@@ -227,7 +227,7 @@ func (r *MongoDBAtlasInstanceReconciler) reconcileAtlasDeployment(cx context.Con
 			// The corresponding AtlasDeployment is not found, no reqeue.
 			log.Info("AtlasDeployment resource not found, has been deleted")
 			result := workflow.InProgress(workflow.MongoDBAtlasInstanceClusterNotFound, "AtlasDeployment not found")
-			dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
+			dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(result.Reason()), result.Message())
 			return ctrl.Result{}, nil
 		}
 		log.Error(err, "Error fetching AtlasDeployment")
@@ -488,12 +488,12 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 	instInfo, result := atlasinventory.GetClusterInfo(atlasClient, project, inst.Spec.Name)
 	if result.IsOk() {
 		// Stores the phase info in inst.Status.Phase and remove from instInfo.InstanceInf map
-		inst.Status.Phase = dbaasv1alpha1.DBaasInstancePhase(instInfo.ServiceInfo[dbaas.ProvisionPhaseKey])
+		inst.Status.Phase = dbaasv1beta1.DBaasInstancePhase(instInfo.ServiceInfo[dbaas.ProvisionPhaseKey])
 		delete(instInfo.ServiceInfo, dbaas.ProvisionPhaseKey)
 		inst.Status.InstanceID = instInfo.ServiceID
 		inst.Status.InstanceInfo = instInfo.ServiceInfo
 	} else {
-		inst.Status.Phase = dbaasv1alpha1.InstancePhasePending
+		inst.Status.Phase = dbaasv1beta1.InstancePhasePending
 		inst.Status.InstanceID = ""
 		inst.Status.InstanceInfo = nil
 	}
@@ -502,22 +502,22 @@ func setInstanceStatusWithDeploymentInfo(atlasClient *mongodbatlas.Client, inst 
 		if cond.Type == status.DeploymentReadyType {
 			statusFound = true
 			if cond.Status == corev1.ConditionTrue {
-				if inst.Status.Phase == dbaasv1alpha1.InstancePhaseReady {
-					dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
+				if inst.Status.Phase == dbaasv1beta1.InstancePhaseReady {
+					dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), "Ready", cond.Message)
 					return false, result
 				}
-				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, instancePhaseChangedInAtlas, instancePhaseChangedInAtlasMsg)
+				dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, instancePhaseChangedInAtlas, instancePhaseChangedInAtlasMsg)
 				return true, result
 			} else {
 				if strings.Contains(cond.Message, FreeClusterFailed) {
-					inst.Status.Phase = dbaasv1alpha1.InstancePhaseFailed
+					inst.Status.Phase = dbaasv1beta1.InstancePhaseFailed
 				}
-				dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), cond.Reason, cond.Message)
+				dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionStatus(cond.Status), cond.Reason, cond.Message)
 			}
 		}
 	}
 	if !statusFound {
-		dbaas.SetInstanceCondition(inst, dbaasv1alpha1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(dbaasv1alpha1.InstancePhasePending), "Waiting for cluster creation to start")
+		dbaas.SetInstanceCondition(inst, dbaasv1beta1.DBaaSInstanceProviderSyncType, metav1.ConditionFalse, string(dbaasv1beta1.InstancePhasePending), "Waiting for cluster creation to start")
 	}
 	return false, result
 }

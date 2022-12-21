@@ -43,7 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	dbaasv1alpha1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1alpha1"
 	dbaasv1beta1 "github.com/RHEcosystemAppEng/dbaas-operator/api/v1beta1"
 	"go.mongodb.org/atlas/mongodbatlas"
 
@@ -305,7 +304,7 @@ func TestAtlasConnectionReconcile(t *testing.T) {
 							LastTransitionTime: metav1.Now(),
 							Status:             metav1.ConditionStatus(tc.inventoryStatus),
 							Reason:             tc.inventoryReason,
-							Type:               dbaasv1alpha1.DBaaSInventoryProviderSyncType,
+							Type:               dbaasv1beta1.DBaaSInventoryProviderSyncType,
 						},
 					},
 					DatabaseServices: instances,
@@ -499,7 +498,7 @@ func TestDBUserDelete(t *testing.T) {
 							LastTransitionTime: metav1.Now(),
 							Status:             metav1.ConditionStatus(tc.inventoryStatus),
 							Reason:             tc.inventoryReason,
-							Type:               dbaasv1alpha1.DBaaSInventoryProviderSyncType,
+							Type:               dbaasv1beta1.DBaaSInventoryProviderSyncType,
 						},
 					},
 					DatabaseServices: instances,
